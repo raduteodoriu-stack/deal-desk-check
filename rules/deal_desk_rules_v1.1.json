@@ -1,0 +1,816 @@
+{
+  "rules_version": "1.1",
+  "status": "proposed",
+  "company": "MoP Cloud (fictional)",
+  "currency": "EUR",
+  "note": "Fictional prices. Structure modelled on Seqera's public pricing (platform plans + committed compute credits + overage).",
+  "business_hours": {
+    "timezone": "Europe/Madrid",
+    "days": [
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri"
+    ],
+    "start": "09:00",
+    "end": "18:00",
+    "holidays": "ES national"
+  },
+  "standard_terms": {
+    "term_months_allowed": [
+      12,
+      24,
+      36
+    ],
+    "billing_frequency": [
+      "annual_in_advance",
+      "multi_year_upfront"
+    ],
+    "payment_terms_days": 30,
+    "auto_renewal": true,
+    "non_renewal_notice_days": 60,
+    "renewal_uplift_cap_pct_max": 7,
+    "opt_out": false,
+    "credit_rollover_pct": 0,
+    "liability_cap_months": 12,
+    "governing_law": "Spain",
+    "quote_validity_days": 30
+  },
+  "price_book": [
+    {
+      "id": "P-01",
+      "sku": "PLT-PRO",
+      "name": "Cloud Pro platform",
+      "line_type": "recurring",
+      "family": "platform",
+      "unit": "year",
+      "list_price": "12000.00",
+      "included_users": 10,
+      "max_total_users": 50,
+      "academic_eligible": true,
+      "aliases": [
+        "Cloud Pro",
+        "Pro platform",
+        "Pro subscription"
+      ]
+    },
+    {
+      "id": "P-02",
+      "sku": "PLT-PRO-USER",
+      "name": "Additional Pro user",
+      "line_type": "recurring",
+      "family": "platform",
+      "unit": "user_year",
+      "list_price": "900.00",
+      "requires": [
+        "PLT-PRO"
+      ],
+      "academic_eligible": true,
+      "aliases": [
+        "Additional Pro user",
+        "Pro user"
+      ]
+    },
+    {
+      "id": "P-03",
+      "sku": "PLT-ENT-CLD",
+      "name": "Enterprise platform, cloud",
+      "line_type": "recurring",
+      "family": "platform",
+      "unit": "year",
+      "list_price": "60000.00",
+      "included_users": 50,
+      "academic_eligible": true,
+      "aliases": [
+        "Enterprise (cloud)",
+        "Enterprise platform (cloud)",
+        "Enterprise Cloud"
+      ]
+    },
+    {
+      "id": "P-04",
+      "sku": "PLT-ENT-SH",
+      "name": "Enterprise platform, self-hosted",
+      "line_type": "recurring",
+      "family": "platform",
+      "unit": "year",
+      "list_price": "72000.00",
+      "included_users": 50,
+      "academic_eligible": true,
+      "aliases": [
+        "Enterprise (self-hosted)",
+        "Enterprise self-hosted",
+        "Enterprise on-premises"
+      ]
+    },
+    {
+      "id": "P-05",
+      "sku": "PLT-ENT-USER",
+      "name": "Additional Enterprise user",
+      "line_type": "recurring",
+      "family": "platform",
+      "unit": "user_year",
+      "list_price": "700.00",
+      "requires_any": [
+        "PLT-ENT-CLD",
+        "PLT-ENT-SH"
+      ],
+      "academic_eligible": true,
+      "aliases": [
+        "Additional Enterprise user",
+        "Enterprise user"
+      ]
+    },
+    {
+      "id": "P-06",
+      "sku": "CMP-CRED",
+      "name": "Committed compute credits",
+      "line_type": "recurring",
+      "family": "credits",
+      "unit": "credit",
+      "list_price": "1.00",
+      "min_qty_per_year": 10000,
+      "academic_eligible": false,
+      "aliases": [
+        "Compute credits",
+        "Committed credits",
+        "Credits"
+      ]
+    },
+    {
+      "id": "P-07",
+      "sku": "CMP-OVG",
+      "name": "Overage credits",
+      "line_type": "usage",
+      "family": "credits",
+      "unit": "credit",
+      "list_price": "1.20",
+      "quotable": false,
+      "academic_eligible": false,
+      "aliases": [
+        "Overage",
+        "Additional credits in arrears"
+      ]
+    },
+    {
+      "id": "P-08",
+      "sku": "SUP-PREM",
+      "name": "Premium support (Pro only)",
+      "line_type": "recurring",
+      "family": "support",
+      "unit": "year",
+      "list_price": "3000.00",
+      "requires": [
+        "PLT-PRO"
+      ],
+      "academic_eligible": true,
+      "aliases": [
+        "Premium support"
+      ]
+    },
+    {
+      "id": "P-09",
+      "sku": "SVC-ONB",
+      "name": "Onboarding package",
+      "line_type": "one_off",
+      "family": "services",
+      "unit": "package",
+      "list_price": "8000.00",
+      "academic_eligible": false,
+      "aliases": [
+        "Onboarding",
+        "Onboarding package"
+      ]
+    },
+    {
+      "id": "P-10",
+      "sku": "SVC-TRN",
+      "name": "Training day",
+      "line_type": "one_off",
+      "family": "services",
+      "unit": "day",
+      "list_price": "2000.00",
+      "academic_eligible": false,
+      "aliases": [
+        "Training",
+        "Training day"
+      ]
+    },
+    {
+      "id": "P-11",
+      "sku": "SVC-PS",
+      "name": "Professional services",
+      "line_type": "one_off",
+      "family": "services",
+      "unit": "hour",
+      "list_price": "180.00",
+      "academic_eligible": false,
+      "aliases": [
+        "Professional services",
+        "Consulting hours"
+      ]
+    }
+  ],
+  "credit_volume_tiers": {
+    "rule": "P-06",
+    "per": "contract_year",
+    "tiers": [
+      {
+        "min_qty": 10000,
+        "max_qty": 49999,
+        "discount_pct": "0"
+      },
+      {
+        "min_qty": 50000,
+        "max_qty": 199999,
+        "discount_pct": "5"
+      },
+      {
+        "min_qty": 200000,
+        "max_qty": null,
+        "discount_pct": "10"
+      }
+    ]
+  },
+  "academic": {
+    "rule": "P-12",
+    "price_factor": "0.60",
+    "applies_to_families": [
+      "platform",
+      "support"
+    ],
+    "requires_field": "Account.Academic_Verified__c"
+  },
+  "quote_validation": [
+    {
+      "id": "Q-01",
+      "check": "start_date >= quote_date and end_date == start_date + term_months - 1 day"
+    },
+    {
+      "id": "Q-02",
+      "check": "every sku active in price book and list price == price book"
+    },
+    {
+      "id": "Q-03",
+      "check": "PLT-PRO total users (included + additional) <= 50"
+    },
+    {
+      "id": "Q-04",
+      "check": "SUP-PREM not with PLT-ENT-*"
+    },
+    {
+      "id": "Q-05",
+      "check": "CMP-CRED >= 10000 per contract year when present"
+    },
+    {
+      "id": "Q-06",
+      "check": "account has legal name, VAT ID and billing contact"
+    },
+    {
+      "id": "Q-07",
+      "check": "expansion quotes co-term to existing contract end date"
+    },
+    {
+      "id": "Q-08",
+      "check": "academic price only if Academic_Verified__c"
+    },
+    {
+      "id": "Q-09",
+      "check": "CMP-OVG never quoted as quantity"
+    },
+    {
+      "id": "Q-10",
+      "check": "exactly one platform SKU on new business quotes"
+    }
+  ],
+  "approval_chain": [
+    "Sales Manager",
+    "VP Sales",
+    "CRO"
+  ],
+  "parallel_approvers": [
+    "Deal Desk",
+    "Finance",
+    "CFO",
+    "Legal"
+  ],
+  "discount_bands": [
+    {
+      "id": "D-01",
+      "applies_to_families": [
+        "platform",
+        "support"
+      ],
+      "measure": "line_discount_pct_vs_applicable_list",
+      "bands": [
+        {
+          "min_incl": "0",
+          "max_incl": "10",
+          "approvers": []
+        },
+        {
+          "min_excl": "10",
+          "max_incl": "20",
+          "approvers": [
+            "Sales Manager"
+          ]
+        },
+        {
+          "min_excl": "20",
+          "max_incl": "30",
+          "approvers": [
+            "VP Sales",
+            "Deal Desk"
+          ]
+        },
+        {
+          "min_excl": "30",
+          "max_incl": "40",
+          "approvers": [
+            "CRO",
+            "CFO",
+            "Deal Desk"
+          ]
+        },
+        {
+          "min_excl": "40",
+          "max_incl": null,
+          "allowed": false
+        }
+      ]
+    },
+    {
+      "id": "D-02",
+      "applies_to_families": [
+        "credits"
+      ],
+      "measure": "extra_discount_pp_beyond_tier",
+      "bands": [
+        {
+          "min_incl": "0",
+          "max_incl": "0",
+          "approvers": []
+        },
+        {
+          "min_excl": "0",
+          "max_incl": "5",
+          "approvers": [
+            "Deal Desk"
+          ]
+        },
+        {
+          "min_excl": "5",
+          "max_incl": "10",
+          "approvers": [
+            "CFO"
+          ]
+        },
+        {
+          "min_excl": "10",
+          "max_incl": null,
+          "allowed": false
+        }
+      ]
+    },
+    {
+      "id": "D-03",
+      "applies_to_families": [
+        "services"
+      ],
+      "measure": "line_discount_pct_vs_list",
+      "bands": [
+        {
+          "min_incl": "0",
+          "max_incl": "0",
+          "approvers": []
+        },
+        {
+          "min_excl": "0",
+          "max_incl": "15",
+          "approvers": [
+            "Sales Manager"
+          ]
+        },
+        {
+          "min_excl": "15",
+          "max_incl": "100",
+          "approvers": [
+            "VP Sales"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "D-04",
+      "applies_to_families": [
+        "platform",
+        "support"
+      ],
+      "measure": "free_months_at_start",
+      "bands": [
+        {
+          "min_incl": "0",
+          "max_incl": "0",
+          "approvers": []
+        },
+        {
+          "min_excl": "0",
+          "max_incl": "2",
+          "approvers": [
+            "Sales Manager"
+          ]
+        },
+        {
+          "min_excl": "2",
+          "max_incl": null,
+          "allowed": false
+        }
+      ]
+    }
+  ],
+  "approval_rules": [
+    {
+      "id": "A-01",
+      "rule": "discount chain sequential up to highest required level; Deal Desk/Finance/CFO/Legal added in parallel"
+    },
+    {
+      "id": "A-02",
+      "rule": "TCV >= threshold adds CRO review (parallel)",
+      "tcv_threshold": "250000.00",
+      "approvers": [
+        "CRO"
+      ]
+    },
+    {
+      "id": "A-03",
+      "rule": "TCV >= threshold adds CFO review",
+      "tcv_threshold": "500000.00",
+      "approvers": [
+        "CFO"
+      ]
+    },
+    {
+      "id": "A-04",
+      "rule": "Deal Desk reviews when VP Sales or higher, any N-rule, or A-02/A-03 is triggered",
+      "approvers": [
+        "Deal Desk"
+      ]
+    },
+    {
+      "id": "A-05",
+      "rule": "approval valid only for the approved quote version"
+    },
+    {
+      "id": "A-06",
+      "rule": "no self-approval; standing deputy approves on behalf of, logged"
+    },
+    {
+      "id": "A-07",
+      "rule": "approval expires with quote validity",
+      "days": 30
+    },
+    {
+      "id": "A-08",
+      "rule": "approval targets in business days",
+      "targets_business_days": {
+        "Sales Manager": 1,
+        "VP Sales": 1,
+        "Deal Desk": 1,
+        "CRO": 2,
+        "CFO": 2,
+        "Finance": 2,
+        "Legal": 2
+      }
+    }
+  ],
+  "non_standard_terms": [
+    {
+      "id": "N-01",
+      "term": "payment_terms_days",
+      "bands": [
+        {
+          "min_excl": 30,
+          "max_incl": 60,
+          "approvers": [
+            "Finance"
+          ]
+        },
+        {
+          "min_excl": 60,
+          "max_incl": null,
+          "approvers": [
+            "CFO"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "N-02",
+      "term": "billing_frequency",
+      "values": {
+        "quarterly": [
+          "Finance"
+        ],
+        "monthly": [
+          "CFO"
+        ]
+      }
+    },
+    {
+      "id": "N-03",
+      "term": "term_months",
+      "rules": [
+        {
+          "condition": "term_months > 36",
+          "approvers": [
+            "CFO"
+          ]
+        },
+        {
+          "condition": "term_months not in [12,24,36] and not coterm_expansion",
+          "approvers": [
+            "Deal Desk"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "N-04",
+      "term": "step_up_shape",
+      "min_y1_arr_to_acv": "0.60",
+      "no_step_downs": true,
+      "approvers": [
+        "CFO"
+      ]
+    },
+    {
+      "id": "N-05",
+      "term": "renewal_uplift_cap_pct",
+      "condition": "cap < 3 or price lock beyond term",
+      "approvers": [
+        "VP Sales",
+        "Finance"
+      ]
+    },
+    {
+      "id": "N-06",
+      "term": "auto_renewal",
+      "condition": "removed or notice_days > 90 or notice_days < 60",
+      "approvers": [
+        "Deal Desk"
+      ],
+      "min_notice_days": 60,
+      "max_notice_days": 90
+    },
+    {
+      "id": "N-07",
+      "term": "opt_out",
+      "allowed_shape": {
+        "multi_year_only": true,
+        "at_anniversary_only": true,
+        "min_notice_days": 90
+      },
+      "approvers": [
+        "Legal",
+        "CFO"
+      ],
+      "other_shapes_allowed": false
+    },
+    {
+      "id": "N-08",
+      "term": "credit_rollover_pct",
+      "max_pct": 25,
+      "approvers": [
+        "Finance"
+      ],
+      "above_max_allowed": false
+    },
+    {
+      "id": "N-09",
+      "term": "legal_terms",
+      "triggers": [
+        "liability_cap_months > 12",
+        "uncapped_liability",
+        "mfn",
+        "custom_sla_credits",
+        "custom_data_residency"
+      ],
+      "approvers": [
+        "Legal"
+      ]
+    },
+    {
+      "id": "N-10",
+      "term": "currency",
+      "condition": "currency != EUR",
+      "allowed": false
+    },
+    {
+      "id": "N-11",
+      "term": "governing_law",
+      "condition": "governing_law != Spain",
+      "approvers": [
+        "Legal"
+      ]
+    },
+    {
+      "id": "N-12",
+      "term": "delayed_start",
+      "condition": "start_date - quote_date > 90 days",
+      "approvers": [
+        "Deal Desk"
+      ]
+    }
+  ],
+  "contract_checks": {
+    "money_tolerance_eur": "1.00",
+    "name_similarity_review_min": "0.90",
+    "extraction_confidence_min": "0.80",
+    "legal_form_suffixes": [
+      "S.L.",
+      "SL",
+      "S.L.U.",
+      "SLU",
+      "S.A.",
+      "SA",
+      "Lda.",
+      "Lda",
+      "S.A.S.",
+      "SAS",
+      "SARL",
+      "S.A.R.L."
+    ],
+    "rules": [
+      {
+        "id": "C-01",
+        "check": "both parties signed, last signature date present",
+        "fail": "BLOCK"
+      },
+      {
+        "id": "C-02",
+        "check": "customer legal name == Account legal name (normalised)",
+        "fail": "BLOCK",
+        "near_match": "REVIEW"
+      },
+      {
+        "id": "C-03",
+        "check": "customer VAT ID == Account VAT ID (normalised)",
+        "fail": "BLOCK"
+      },
+      {
+        "id": "C-04",
+        "check": "currency == EUR == quote currency",
+        "fail": "BLOCK"
+      },
+      {
+        "id": "C-05",
+        "check": "start date == quote start date",
+        "fail": "BLOCK"
+      },
+      {
+        "id": "C-06",
+        "check": "term months and end date == quote",
+        "fail": "BLOCK"
+      },
+      {
+        "id": "C-07",
+        "check": "same SKU set as quote",
+        "fail": "BLOCK"
+      },
+      {
+        "id": "C-08",
+        "check": "net amount per line per year == quote (tolerance)",
+        "fail": "BLOCK"
+      },
+      {
+        "id": "C-09",
+        "check": "committed credits per year == quote",
+        "fail": "BLOCK"
+      },
+      {
+        "id": "C-10",
+        "check": "recomputed ARR_1 and TCV == Opportunity Booked_ARR__c and TCV__c (tolerance)",
+        "fail": "BLOCK"
+      },
+      {
+        "id": "C-11",
+        "check": "payment terms == approved",
+        "fail": "BLOCK",
+        "better_for_mop": "REVIEW"
+      },
+      {
+        "id": "C-12",
+        "check": "billing frequency == approved",
+        "fail": "BLOCK"
+      },
+      {
+        "id": "C-13",
+        "check": "auto-renewal and notice == standard or approved",
+        "fail": "BLOCK"
+      },
+      {
+        "id": "C-14",
+        "check": "uplift cap == standard or approved",
+        "fail": "BLOCK"
+      },
+      {
+        "id": "C-15",
+        "check": "opt-out only if approved under N-07 with same date/notice",
+        "fail": "BLOCK"
+      },
+      {
+        "id": "C-16",
+        "check": "credit rollover only if approved under N-08 with same pct",
+        "fail": "BLOCK"
+      },
+      {
+        "id": "C-17",
+        "check": "other non-standard clauses only if approved",
+        "fail": "REVIEW",
+        "route_to": "Legal"
+      },
+      {
+        "id": "C-18",
+        "check": "contract references approved quote number+version; approval valid on signature date",
+        "fail": "BLOCK"
+      },
+      {
+        "id": "C-19",
+        "check": "required fields extracted, snippets verified, confidence >= min",
+        "fail": "REVIEW"
+      },
+      {
+        "id": "C-20",
+        "check": "document complete and has text layer",
+        "fail": "REVIEW"
+      },
+      {
+        "id": "C-21",
+        "check": "embedded instructions to AI/system detected",
+        "fail": "REVIEW",
+        "security_flag": true
+      },
+      {
+        "id": "C-22",
+        "check": "Opportunity close date == last signature date",
+        "fail_other_quarter": "BLOCK",
+        "fail_same_quarter": "REVIEW"
+      }
+    ],
+    "outcome_precedence": [
+      "BLOCK",
+      "REVIEW",
+      "PASS"
+    ],
+    "override_reason_codes": [
+      "customer_amendment_pending",
+      "approved_post_signature",
+      "extraction_error",
+      "policy_exception_cfo",
+      "other"
+    ]
+  },
+  "definitions": {
+    "recurring_line_types": [
+      "recurring"
+    ],
+    "one_off_line_types": [
+      "one_off"
+    ],
+    "excluded_line_types": [
+      "usage"
+    ],
+    "arr_y": "sum of net recurring amounts in contract year y at run-rate; partial years annualised x12/months; free months do not reduce ARR",
+    "booked_arr": "ARR_1 (new business); expansions: ARR_1 of added lines annualised",
+    "contracted_step_up": "ARR_y - ARR_(y-1) for y >= 2, recorded in ARR schedule, not a new booking",
+    "acv": "sum(ARR_y) / term_years",
+    "tcv": "sum of net recurring actually invoiced over term (free months deducted, partial years prorated) + sum of net one-off amounts; overage excluded",
+    "close_date": "last signature date",
+    "booking_date": "date Booking_Status__c set to Booked"
+  },
+  "kpis": [
+    "K-01",
+    "K-02",
+    "K-03",
+    "K-04",
+    "K-05",
+    "K-06",
+    "K-07",
+    "K-08",
+    "K-09",
+    "K-10",
+    "K-11"
+  ],
+  "change_log": [
+    {
+      "version": "1.0",
+      "change": "first version (proposed values)"
+    },
+    {
+      "version": "1.1",
+      "change": "N-06 adds notice_days < 60 trigger; K-11 finding precision added",
+      "reason": "close short-notice gap; project goal requires precision/recall scoring"
+    }
+  ]
+}

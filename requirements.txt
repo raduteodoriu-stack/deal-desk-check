@@ -1,0 +1,5 @@
+pytest>=8
+jsonschema>=4.22
+pydantic>=2.7
+pypdf>=4.2
+python-dotenv>=1.0

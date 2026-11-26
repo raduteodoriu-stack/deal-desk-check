@@ -1,0 +1,58 @@
+# ---- Secrets: never commit ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials*.json
+
+# ---- Private, local only ----
+# Personal notes and anything not meant for a public repo
+private/
+# Handoff documents (session notes); the template stays public
+docs/handoff/*
+!docs/handoff/TEMPLATE.md
+!docs/handoff/.gitkeep
+# Target-role notes (job posting summary, applicant counts)
+docs/seqera_context.md
+# Commit message drafts used with git commit -F
+.commit_msg*
+
+# ---- Raw LLM output and run logs (recorded test fixtures under tests/ stay tracked) ----
+logs/
+*.log
+extractor/runs/
+extractor/raw/
+
+# ---- Python ----
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+build/
+dist/
+
+# ---- Editors and OS ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ---- Salesforce CLI local state ----
+salesforce/.sf/
+salesforce/.sfdx/
+salesforce/.localdevserver/
+
+# ---- n8n local data ----
+n8n/.n8n/
+
+# ---- dbt ----
+reporting/target/
+reporting/logs/
+reporting/dbt_packages/
