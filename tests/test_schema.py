@@ -4,7 +4,7 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
-SCHEMA = Path(__file__).resolve().parents[1] / "schemas" / "contract_extraction_v1.json"
+SCHEMA = Path(__file__).resolve().parents[1] / "schemas" / "contract_extraction_v1.1.json"
 
 
 def test_schema_is_valid():

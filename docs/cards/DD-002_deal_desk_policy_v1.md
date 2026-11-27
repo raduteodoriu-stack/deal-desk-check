@@ -1,7 +1,72 @@
-# DD-002 — Deal desk policy & rules v1.1
+# DD-002 — Deal desk policy & rules v1.2
 
-> Human-readable version of `rules/deal_desk_rules_v1.1.json`. If they disagree, the JSON wins and the gap is a bug.
+> Human-readable version of `rules/deal_desk_rules_v1.2.json`. If they disagree, the JSON wins and the gap is a bug.
 > All prices are fictional, in EUR, and annual unless stated. The structure (platform plans + committed compute credits + overage) is modelled on Seqera's public pricing. The numbers are invented.
+
+## Card
+**Purpose:** one versioned policy that every other card reads: price book, quote validation, discount bands, approval rules, non-standard terms, contract checks and KPIs. Code never holds a threshold of its own.
+
+**Story:** today the approval rules live in people's heads, so AEs can't predict what needs approval and Finance can't tell a valid exception from a mistake. Writing every rule once, with an ID, makes routing automatic, makes every finding traceable to a rule, and makes a policy change a reviewed, versioned event instead of a quiet edit.
+
+### What this card delivers
+| # | Deliverable | Where | What it contains |
+|---|---|---|---|
+| 1 | Machine-readable rules | `rules/deal_desk_rules_v1.2.json` | Every rule value with its ID; money as strings so code parses it with Decimal |
+| 2 | Human-readable policy | This file, sections 1 to 9 | The same rules in tables, with definitions and two worked examples |
+| 3 | Consistency tests | `tests/test_rules_consistency.py` | IDs unique, bands contiguous, credit tiers contiguous, every ID cited here exists in the JSON, worked example 1 reproduced |
+| 4 | Version history | JSON `change_log` + Change log below | What changed in each version and why |
+
+### Rule groups and who uses them
+| Group | IDs | What it decides | Used by |
+|---|---|---|---|
+| Price book | P-01 to P-12 | List price, applicable list (credit tiers, academic) | DD-004 quote engine; DD-005 Products, Pricebooks, `Applicable_List__c` |
+| Quote validation | Q-01 to Q-10 | Whether a quote can be submitted | DD-004 (Q-01, Q-03, Q-04, Q-05, Q-09, Q-10); DD-005 validation rules (Q-03, Q-04, Q-09) |
+| Discount bands | D-01 to D-04 | Approval level per line discount | DD-004 approvals; DD-005 Flow via Custom Metadata |
+| Approval rules | A-01 to A-08 | Chain order, TCV thresholds, validity, targets | DD-004; DD-005 Approval Process; C-18 |
+| Non-standard terms | N-01 to N-12 | Which exception needs which approver, or is not allowed | DD-004; DD-006 playbook variants; DD-014 known variants |
+| Contract checks | C-01 to C-22 | PASS / REVIEW / BLOCK per finding | DD-014 pre-check; DD-008 comparator; DD-005 findings |
+| KPIs | K-01 to K-11 | How results are measured | Test report (K-09 to K-11); DD-011 later (K-01 to K-08) |
+
+### Values loaded into Salesforce (DD-005 Custom Metadata `Deal_Desk_Rule__mdt`)
+D-01 to D-04 band edges and approvers · A-02 and A-03 TCV thresholds · P-06 credit tier edges and discounts · P-12 academic factor. The load is generated from the JSON, so Salesforce and Python can't drift; the DD-005 parity test proves it.
+
+### Decisions
+| Topic | Decided |
+|---|---|
+| Source of truth | The JSON. The markdown explains it; any gap between them is a bug |
+| Money | Strings in JSON, Decimal in code, rounded to cents only at line level |
+| Discount measure | Per line, per contract year, against the applicable list (after credit tier or academic price) |
+| Academic price | Becomes the applicable list; discount bands apply on top |
+| Credit tiers | Per contract year, on that year's committed quantity |
+| Free months | Count as discount (D-04) and reduce TCV, but don't reduce ARR |
+| Approval shape | Sequential chain Sales Manager → VP Sales → CRO up to the highest level needed; Deal Desk, Finance, CFO and Legal added in parallel |
+| Money tolerance in contract checks | ±€1 per line per year |
+| Changing a value | New version (e.g. v1.2 → v1.3) with a change-log reason, PR labelled `rule-change`, tests re-run. Never an in-place edit |
+| Calibration | Values are proposed; after DD-003 any change goes to v1.2 |
+
+### Open questions (owner decides)
+| # | Question | Options | Recommendation |
+|---|---|---|---|
+| OQ-1 | Which renewal uplift caps need approval? | Keep the 3% floor / owner's policy | **Answered (v1.2):** standard is 5–7% or CPI + 2 pp (greater), 1 renewal cycle, on prior net price, platform and support only. Below 5%, a 0% hold, multi-cycle caps and caps on credit/usage rates → Deal Desk + Finance |
+| OQ-2 | What notice period is standard? | One band / 60 days / by segment | **Answered (v1.2):** by segment from the platform SKU: Pro 30–60 days, Enterprise 60–90 days; outside the band → Deal Desk |
+
+### Acceptance criteria
+- [x] Rules v1.1 JSON with change log (N-06 short notice, K-11 precision)
+- [x] Rules v1.2: N-05 uplift cap policy and N-06 notice by segment
+- [x] Markdown matches the JSON (N-01 wording, legal-form suffixes)
+- [x] Every rule has an ID, and every rule group names the card that uses it
+- [x] `pytest tests/test_rules_consistency.py` passes on v1.2
+- [x] Worked example 1 (3-year Enterprise with credit step-up) reproduced in a test
+- [ ] Worked example 2 (academic Pro with services discount) added to `tests/test_rules_consistency.py`
+- [x] OQ-1 and OQ-2 answered (released as v1.2)
+- [ ] Owner signs off on the v1.2 values
+- [ ] After DD-003: values calibrated against the test set; changes, if any, released as v1.3
+
+**Proves:** "Review submitted quotes… multi-year, step-ups, non-standard terms"; "understands B2B deals: quotes, contracts, renewals, ARR/TCV".
+
+---
+
+# Policy
 
 ## 1. Standard terms (no approval needed)
 | Term | Standard |
@@ -10,8 +75,8 @@
 | Term length | 12, 24 or 36 months |
 | Billing | Annually in advance (multi-year upfront also allowed) |
 | Payment terms | Net 30 |
-| Renewal | Auto-renews for the same term; 60 days' notice of non-renewal |
-| Renewal uplift | Up to 7% on renewal |
+| Renewal | Auto-renews for the same term. Non-renewal notice by segment (platform SKU): Pro 30–60 days, Enterprise 60–90 days. Template default: 60 days |
+| Renewal uplift | MoP may raise prices at renewal. A customer cap is standard when it is 5–7%, or CPI + 2 pp if higher (CPI = Spain INE general index, annual rate for the month before the renewal notice). Standard caps cover 1 renewal cycle, apply to the prior net price, and cover platform and support lines only, never credits or overage |
 | Termination for convenience | None |
 | Credits | Committed per contract year; unused credits expire at the end of each contract year |
 | Liability cap | 12 months of fees |
@@ -109,6 +174,22 @@ Effective line discount = 1 − net amount ÷ (applicable list × quantity), per
 - N-04 step-up shape: Y1 ÷ average = 146,000 ÷ 190,166.67 = 76.8% (≥ 60%, passes); no step-downs (passes)
 - Approvals: D-01 15% → Sales Manager; A-02 → CRO; A-03 → CFO; A-04 → Deal Desk. **Result: Sales Manager, Deal Desk, CRO, CFO**
 
+### Worked example 2: 2-year academic Pro deal with a services discount
+Account has `Academic_Verified__c = true` (Q-08). 24 months, 20 users in total (Q-03: ≤ 50), 30,000 credits per year (Q-05: ≥ 10,000).
+
+| Line | List | Applicable list | Discount | Net per year |
+|---|---|---|---|---|
+| PLT-PRO | €12,000 | €7,200 (60%, P-12) | 12% | €6,336 |
+| PLT-PRO-USER × 10 | €9,000 | €5,400 | 12% | €4,752 |
+| SUP-PREM | €3,000 | €1,800 | 12% | €1,584 |
+| CMP-CRED 30,000 | €30,000 | €30,000 (tier 0%, no academic price) | 0 pp | €30,000 |
+| SVC-TRN × 2 days (one-off, year 1) | €4,000 | €4,000 | 10% | €3,600 |
+
+- ARR_1 = ARR_2 = 12,672 + 30,000 = **€42,672**; Booked ARR = **€42,672**; no step-up
+- ACV = **€42,672**
+- TCV = 42,672 × 2 + 3,600 = **€88,944**
+- Approvals: D-01 12% → Sales Manager; D-03 10% → Sales Manager; TCV below A-02. **Result: Sales Manager**
+
 ## 7. Non-standard terms (N-rules)
 | ID | Term | Trigger | Approval |
 |---|---|---|---|
@@ -116,8 +197,8 @@ Effective line discount = 1 − net amount ÷ (applicable list × quantity), per
 | N-02 | Billing frequency | Quarterly / monthly | Finance / CFO |
 | N-03 | Term length | > 36 months / not 12, 24 or 36 (except co-termed expansions) | CFO / Deal Desk |
 | N-04 | Step-up shape | Y1 ARR < 60% of ACV, or any year below the year before | CFO |
-| N-05 | Renewal uplift cap | Cap < 3%, or price lock beyond the term | VP Sales + Finance |
-| N-06 | Auto-renewal | Removed, notice > 90 days, or notice < 60 days | Deal Desk |
+| N-05 | Renewal uplift cap | Cap below 5% (including a 0% price hold); a cap covering more than one renewal cycle (multi-term or perpetual, price lock beyond the term); any cap on credit or usage rates | Deal Desk + Finance |
+| N-06 | Auto-renewal | Removed, or non-renewal notice outside the segment band (Pro 30–60 days, Enterprise 60–90 days) | Deal Desk |
 | N-07 | Opt-out (termination for convenience) | Multi-year only, at an anniversary, ≥ 90 days' notice. Any other shape is not allowed | Legal + CFO |
 | N-08 | Credit rollover | Up to 25% of unused committed credits into the next year. More is not allowed | Finance |
 | N-09 | Legal terms | Liability cap > 12 months' fees, uncapped liability, MFN, custom SLA credits, custom data residency | Legal |
@@ -143,8 +224,8 @@ Money tolerance: ±€1 per line per year. Names are normalised (case, punctuati
 | C-10 | ARR_1 and TCV recomputed from the contract = Opportunity Booked ARR and TCV (±€1) | BLOCK |
 | C-11 | Payment terms = approved terms | BLOCK if worse for MoP; REVIEW if better |
 | C-12 | Billing frequency = approved | BLOCK |
-| C-13 | Auto-renewal and notice days = standard or approved exception | BLOCK |
-| C-14 | Renewal uplift cap = standard or approved exception | BLOCK |
+| C-13 | Auto-renewal and notice days = standard band for the segment or approved exception | BLOCK |
+| C-14 | Renewal uplift cap (%, fixed or CPI-based, renewal cycles covered, lines covered) = standard or approved exception | BLOCK |
 | C-15 | Opt-out clause appears only if approved under N-07, with the same date and notice | BLOCK |
 | C-16 | Credit rollover appears only if approved under N-08, with the same % | BLOCK |
 | C-17 | Other non-standard clauses (N-09, N-11) only if approved | REVIEW (route to Legal) |
@@ -176,3 +257,4 @@ Business hours: Monday to Friday, 09:00–18:00 Europe/Madrid, excluding Spanish
 ## Change log
 - v1.0: first version (proposed values, to be calibrated against the test set in DD-003).
 - v1.1: N-06 also triggers when non-renewal notice is under 60 days (closes a gap: shorter notice moves renewal risk to MoP). K-11 finding precision added so precision/recall scoring has a rule ID. Markdown fixes with no value change: N-01 wording now matches the JSON (> Net 30), legal-form suffix list matches the JSON.
+- v1.2: N-05 rewritten to the owner's uplift-cap policy (standard 5–7% or CPI + 2 pp, one renewal cycle, prior net price, platform and support only; below 5%, 0% hold, multi-cycle caps and caps on credit or usage rates need Deal Desk + Finance). Reason: protect renewal margin, stop multi-year price locks, keep usage pricing free to change. N-06 notice standard set by segment from the platform SKU (Pro 30–60 days, Enterprise 60–90 days), replacing the single 60-day standard. Reason: match market norms per segment.

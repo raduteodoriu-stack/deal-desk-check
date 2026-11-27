@@ -8,7 +8,7 @@ DD-005 needs only DD-002 and the DD-003 answer keys, so it can run alongside DD-
 | Card | Title | Phase | Depends on | Est. days | Job description bullet it proves |
 |---|---|---|---|---|---|
 | DD-001 | Scope & governance | MVP | — | 0.5 | "Redesigned a commercial process end to end… documented it" |
-| DD-002 | Deal desk policy & rules v1.1 | MVP | 001 | 0.5 | "Review submitted quotes… multi-year, step-ups, non-standard terms"; "ARR/TCV" |
+| DD-002 | Deal desk policy & rules v1.2 | MVP | 001 | 0.5 | "Review submitted quotes… multi-year, step-ups, non-standard terms"; "ARR/TCV" |
 | DD-003 | Test deal set & answer keys | MVP | 002 | 1 | "You notice when numbers don't reconcile" |
 | DD-004 | Quote engine (slim) | MVP | 002, 003 | 1 | "Keep approvals moving" |
 | DD-006 | Standard contract, clause playbook, contract generator | MVP | 003 | 1 | "Commercial runbooks, process maps, system documentation" |
@@ -74,7 +74,7 @@ DD-005 needs only DD-002 and the DD-003 answer keys, so it can run alongside DD-
 - [ ] Clause hash = template hash → `standard`, no LLM call
 - [ ] Clause hash = an allowed playbook variant → `known_variant` (with the N-rule it needs), no LLM call
 - [ ] Otherwise → `changed` or `unrecognised`; a word-level diff against the template is stored as evidence and the clause is queued for DD-007
-- [ ] Regex/parser extraction of slot values (dates, term, currency, line items, payment days, notice days, uplift %, rollover %, quote reference, VAT ID, signatures) into `contract_extraction/v1`, with the matched text as `source_snippet`
+- [ ] Regex/parser extraction of slot values (dates, term, currency, line items, payment days, notice days, uplift %, rollover %, quote reference, VAT ID, signatures) into `contract_extraction/v1.1`, with the matched text as `source_snippet`
 - [ ] Missing or extra clause IDs and broken page sequences flagged (C-20)
 - [ ] Injection screen (phrases addressed to an AI or system) flags C-21 before any LLM call
 - [ ] Pytest on DD-003: every planted "pre-check" error is caught here; LLM calls per contract are logged (target: 0 on clean deals)
@@ -85,7 +85,7 @@ DD-005 needs only DD-002 and the DD-003 answer keys, so it can run alongside DD-
 **Decisions:** Mistral by default behind a provider-agnostic interface (DEC-03); one comparison run against one other model.
 **Acceptance criteria**
 - [ ] Input is only the `changed` / `unrecognised` clauses from DD-014
-- [ ] `prompts/extract_v1.md`; output fills `contract_extraction/v1` fields plus `other_non_standard_clauses[]`, each with a verbatim snippet verified against the contract text
+- [ ] `prompts/extract_v1.md`; output fills `contract_extraction/v1.1` fields plus `other_non_standard_clauses[]`, each with a verbatim snippet verified against the contract text
 - [ ] `extractor/base.py` + `extractor/mistral.py`; one comparison run on the same inputs against one other provider: per-field accuracy, cost, stability over 3 runs at temperature 0
 - [ ] JSON schema validation + up to 2 repair retries; still invalid → REVIEW (`extraction_failed`)
 - [ ] Recorded LLM outputs saved as JSON fixtures so all tests run offline

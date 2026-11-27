@@ -24,7 +24,7 @@ trap 'rm -rf "$TMP"' EXIT
 # id|title|phase|estimate_days|area|milestone|extra_label|depends_on (space-separated)
 # DD-005 estimate is 0 because its 3.5 days sit on the A/B/C sub-issues (no double counting).
 CARDS='DD-001|Scope & governance|MVP|0.5|Docs|MVP||
-DD-002|Deal desk policy & rules v1.1|MVP|0.5|Rules|MVP|rule-change|DD-001
+DD-002|Deal desk policy & rules v1.2|MVP|0.5|Rules|MVP|rule-change|DD-001
 DD-003|Test deal set & answer keys|MVP|1|Tests|MVP||DD-002
 DD-004|Quote engine (slim)|MVP|1|Engine|MVP||DD-002 DD-003
 DD-006|Standard contract, clause playbook, contract generator|MVP|1|Tests|MVP||DD-003

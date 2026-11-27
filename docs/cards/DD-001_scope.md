@@ -12,6 +12,18 @@ MoP Cloud sells platform subscriptions plus usage-based compute credits to resea
 
 The deal desk fixes these with one written policy, an approval path the system works out automatically, and a check that compares every Closed Won deal with the signed contract before it is booked. The check is deterministic first (hash, template diff, regex). An LLM reads only clauses that changed or that the playbook does not recognise.
 
+## What this card delivers
+| # | Deliverable | Where | What it contains |
+|---|---|---|---|
+| 1 | Scope statement | This card: In scope / Out of scope | The MVP boundary and the deferred list, so every later card can be checked against it |
+| 2 | Decision log | This card: Decisions | DEC-01 to DEC-14 with the option chosen and why. New decisions get the next DEC number here |
+| 3 | Stakeholder map and RACI | This card: Stakeholders, RACI | Who needs what, and who is Responsible / Accountable / Consulted / Informed at each step |
+| 4 | To-be process map | This card: Process map | The quote-to-booking flow the MVP implements, with the system steps and the human steps |
+| 5 | Glossary | This card: Glossary | Each term links to its definition in DD-002, so there is one definition per term |
+| 6 | Data protection note | This card: Data protection | What personal data is involved, where it is processed, what is sent to the LLM, and retention |
+| 7 | Definition of done | This card: Definition of done | The checks every card must pass before its issue is closed |
+| 8 | Repo and tracking | GitHub | Public repo `deal-desk-check`, one issue per card on the project board |
+
 ## Stakeholders
 | Role | Needs | Uses |
 |---|---|---|
@@ -21,6 +33,44 @@ The deal desk fixes these with one written policy, an approval path the system w
 | Finance / CFO | Bookings that match contracts; correct ARR and commission base | Booking status, check findings |
 | Legal | Non-standard clauses routed to them | Approval requests for N-rules |
 | Director of RevOps | Quote turnaround, discount trends, booking accuracy | Test report now; dashboard after the MVP |
+
+## RACI
+R = does the work · A = owns the outcome (one per row) · C = consulted · I = informed. "System" means the rules engine or a Salesforce Flow; it computes but never approves or books.
+
+| Step | AE | Sales Mgr / VP / CRO | Deal Desk | Finance / CFO | Legal | Director RevOps | System |
+|---|---|---|---|---|---|---|---|
+| Build and submit the quote | R/A | I | I | | | | Validates Q-rules |
+| Work out the approval path | I | I | A | | | | R (D/A/N-rules) |
+| Approve discounts (D-rules, A-01 to A-03) | I | R/A per band | C | R for CFO bands | | | Routes |
+| Approve non-standard terms (N-rules) | I | C | R/A for Deal Desk items | R/A for Finance/CFO items | R/A for legal items | | Routes |
+| Mark Closed Won at last signature | R | A | I | I | | | Sets Booking Status = Checking |
+| Run the contract check | | | A | I | | | R (pre-check, LLM, comparator) |
+| Clear a REVIEW or BLOCK, or send back | C | C | R/A | C | C for C-17 | | Logs who, when, reason |
+| Book the deal | I | I | C | R/A | | I | Gate enforces PASS or cleared |
+| Change the policy (rules version) | C | C | R | C (A for discount bands and payment terms) | C | A | Tests re-run |
+
+## Process map (to-be, MVP)
+```mermaid
+flowchart TD
+  A[AE builds quote in Salesforce] --> B[Flow: credit tier price, max discount,<br/>Approval_Tier__c, Required_Approvers__c]
+  B --> C{Approval needed?}
+  C -- no --> E[Quote sent to customer]
+  C -- yes --> D[Approval Process:<br/>Sales Mgr → VP Sales → CRO,<br/>plus Deal Desk / Finance / CFO / Legal]
+  D -- approved --> E
+  D -- rejected --> A
+  E --> F[Contract signed by both parties]
+  F --> G[AE sets Closed Won<br/>close date = last signature date]
+  G --> H[Flow: Booking_Status__c = Checking,<br/>Contract_Check__c placeholder]
+  H --> I[Checker offline: pre-check → LLM on changed clauses → comparator]
+  I --> J[CSV import of result and findings]
+  J --> K{Outcome}
+  K -- PASS --> L[Ready to Book]
+  K -- REVIEW / BLOCK --> M[Deal Desk reviews findings]
+  M -- clear with reason code --> L
+  M -- send back --> N[AE fixes contract or Opportunity] --> I
+  L --> O[Finance sets Booked<br/>validation rule checks the gate]
+```
+As-is (for the before/after in DD-013): approvals by email or Slack with no written bands, contracts compared by eye or not at all, mismatches found at month-end close or renewal.
 
 ## In scope (MVP)
 - New business, expansion (upsell) and renewal quotes for the products in the DD-002 price book.
@@ -71,12 +121,44 @@ The deal desk fixes these with one written policy, an approval path the system w
 | DEC-13 | Precision KPI | K-11 in rules v1.1 / test report only | **K-11 in rules v1.1** (finding precision, test set) |
 | DEC-14 | Short non-renewal notice | Add "< 60 days" to N-06 in v1.1 / leave the gap | **Add in v1.1**: notice < 60 days → Deal Desk |
 
+## Glossary
+One definition per term, kept in DD-002. This list only points to it.
+| Term | Meaning in one line | Definition |
+|---|---|---|
+| ARR_y / contracted ARR schedule | Net recurring amount for contract year y, at run-rate | DD-002 §6 |
+| Booked ARR | ARR_1 for new business; ARR_1 of added lines for expansions | DD-002 §6 |
+| Contracted step-up | ARR_y − ARR_(y−1); recorded in the schedule, not a new booking | DD-002 §6 |
+| ACV | Average of ARR_y over the term, one-offs excluded | DD-002 §6 |
+| TCV | Net recurring actually invoiced over the term plus one-offs; overage excluded | DD-002 §6 |
+| Applicable list | List price after credit tier or academic price, before discount | DD-002 §2 |
+| Booking / booking date | Booking Status set to Booked by a named person / the date that happens | DD-002 §6 |
+| Close date | Date of the last signature | DD-002 §6 |
+| Opt-out | Termination for convenience at an anniversary (N-07) | DD-002 §7 |
+| Credit rollover | Unused committed credits carried into the next year (N-08) | DD-002 §7 |
+| PASS / REVIEW / BLOCK | Contract check outcomes and their precedence | DD-002 §8 |
+
+## Data protection (GDPR)
+- **Personal data in scope:** signatory names and titles, billing contact names and emails, VAT IDs of sole traders. The MVP uses synthetic data only.
+- **What goes to the LLM:** only the text of clauses the pre-check marks `changed` or `unrecognised`. Signature blocks, contact details and Account data are never sent. Regex handles those fields locally.
+- **Where it is processed:** the engine runs locally. The default LLM is Mistral's API, chosen for EU processing. For real use, confirm the provider's current processing region, retention and training-use terms in its data processing agreement before sending anything.
+- **Logs:** raw LLM output and run logs stay local (`logs/`, git-ignored). Only recorded synthetic fixtures are committed.
+- **Retention (real use):** signed contracts and check results kept 7 years for audit, or under the company retention policy; LLM request logs kept 30 days.
+- **Access:** in Salesforce, only Deal Desk and Finance can see check findings and clear or book; AEs see their own deals.
+
 ## Governance
 - The policy owner is the Director of RevOps, with the CFO as co-approver for any change to discount bands or payment terms.
 - Rules are versioned (`deal_desk_rules_vX.Y.json`). Changes go through a pull request labelled `rule-change` with a change note, and the test set is re-run before merge.
 - Every approval and override is logged with who, when, which rule and why.
-- Salesforce permissions: AEs see their own quotes; only Deal Desk and Finance can clear a check or set Booking Status = Booked.
+- Salesforce permissions: AEs see their own quotes; Deal Desk and Finance can clear a check; Finance sets Booking Status = Booked (Deal Desk as named deputy, logged under A-06).
 - Progress is tracked as one GitHub issue per card on a GitHub Project board; every change lands through a pull request that references its card.
+
+## Definition of done (every card)
+- [ ] Every acceptance criterion on the card is ticked, and the matching GitHub issue checklist matches
+- [ ] `pytest -q` passes; any answer-key change is explained in `tests/CHANGES.md`
+- [ ] No rule value is changed without a new rules version and a change-log entry
+- [ ] The change is merged through a pull request that names the card and closes its issue
+- [ ] README status table updated
+- [ ] No secrets, tokens or real personal data in the diff
 
 ## Success measures (portfolio)
 Measured on the synthetic test set. These are not claims about real impact.
@@ -84,10 +166,17 @@ Measured on the synthetic test set. These are not claims about real impact.
 - Zero LLM calls on clean deals; LLM spend logged per contract.
 - Every extracted field carries a source snippet that is verified against the text.
 - Approval routing matches the answer key for 100% of test quotes, in Python and in the Salesforce Flow.
-- A one-page "how to size the value" note: deals per quarter × error rate × cost per correction, plus hours saved per month-end close.
+- A one-page "how to size the value" note (in DD-013): deals per quarter × error rate × cost per correction, plus hours saved per month-end close.
 
 ## Acceptance criteria
 - [x] Scope, out of scope and stakeholders agreed
 - [x] DEC-01 to DEC-14 decided and recorded here
+- [x] RACI reviewed and agreed by the owner (Finance books and owns the booking; Deal Desk clears)
+- [ ] To-be process map reviewed; it matches the DD-005 Flows and the DD-008 outcomes
+- [ ] Glossary terms link to DD-002, with no second definition anywhere else
+- [x] Data protection note reviewed (30-day LLM log retention agreed for now)
+- [ ] Definition of done agreed and copied into the PR template checklist
 - [ ] Repo `deal-desk-check` created on GitHub with this card as `docs/cards/DD-001_scope.md`
-- [ ] Glossary terms (ARR, ACV, TCV, booking, step-up, opt-out) link to DD-002
+- [ ] GitHub Project board created with one issue per card (`tools/github/setup_project.sh`)
+
+**Proves:** "Has redesigned at least one commercial process end to end… mapped it, documented it" and "keep runbooks, process maps and the tool inventory up to date".

@@ -16,7 +16,7 @@ As deals get more complex (multi-year terms, step-ups, committed credits, non-st
 | Card | Title | Phase | Status |
 |---|---|---|---|
 | DD-001 | Scope & governance | MVP | Decisions recorded |
-| DD-002 | Policy & rules v1.1 | MVP | Draft (proposed values) |
+| DD-002 | Policy & rules v1.2 | MVP | Draft (proposed values) |
 | DD-003 | Test deal set & answer keys | MVP | Next |
 | DD-004 | Quote engine (slim) | MVP | Not started |
 | DD-006 | Standard contract, clause playbook, generator | MVP | Not started |
@@ -35,7 +35,7 @@ Progress is tracked as one GitHub issue per card on the project board. Card deta
 ## Repo layout
 ```
 rules/       versioned policy (deal_desk_rules_vX.Y.json): the single source of truth
-schemas/     contract_extraction_v1.json (extraction output contract)
+schemas/     contract_extraction_v1.1.json (extraction output contract)
 docs/cards/  DD-xxx cards (scope, policy, roadmap, test method, architecture)
 contracts/   standard template + clause playbook (DD-006)
 dealdesk/    engine: quote engine, pre-check, comparator (DD-004, DD-014, DD-008)

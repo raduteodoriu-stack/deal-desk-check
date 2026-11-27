@@ -1,9 +1,9 @@
-# Contract extraction schema — `contract_extraction/v1`
+# Contract extraction schema — `contract_extraction/v1.1`
 
 In the MVP the deterministic pre-check (DD-014) fills slot fields first with regex, taking the matched text as `source_snippet`. The LLM (DD-007) fills only fields that come from changed or unrecognised clauses. Both write this same schema, and the deterministic value wins where both exist.
 
 The LLM's only job is to fill this schema from the text it is given. It makes no comparisons and no decisions. Code then:
-1. validates the JSON against `schemas/contract_extraction_v1.json`;
+1. validates the JSON against `schemas/contract_extraction_v1.1.json`;
 2. checks that every `source_snippet` appears verbatim in the contract text (whitespace-normalised). If it doesn't, the field is set to `not_found` and C-19 fires;
 3. runs the C-rules (DD-002 §8).
 
@@ -37,6 +37,9 @@ Every extracted field uses the same wrapper:
 | renewal | `auto_renewal` | bool | C-13 |
 | | `non_renewal_notice_days` | int | C-13 |
 | | `renewal_uplift_cap_pct` | number or null | C-14 |
+| | `renewal_uplift_cap_basis` | enum: fixed, cpi_plus (v1.1) | C-14 |
+| | `renewal_uplift_cap_cycles` | int: renewal cycles the cap covers; null = perpetual (v1.1) | C-14 |
+| | `renewal_uplift_cap_applies_to` | array of families: platform, support, credits, usage (v1.1) | C-14 |
 | exits | `opt_out_present` | bool | C-15 |
 | | `opt_out_date` / `opt_out_notice_days` | date / int | C-15 |
 | credits | `credit_rollover_pct` | number (0 if none) | C-16 |
