@@ -24,16 +24,16 @@ trap 'rm -rf "$TMP"' EXIT
 # id|title|phase|estimate_days|area|milestone|extra_label|depends_on (space-separated)
 # DD-005 estimate is 0 because its 3.5 days sit on the A/B/C sub-issues (no double counting).
 CARDS='DD-001|Scope & governance|MVP|0.5|Docs|MVP||
-DD-002|Deal desk policy & rules v1.2|MVP|0.5|Rules|MVP|rule-change|DD-001
-DD-003|Test deal set & answer keys|MVP|1|Tests|MVP||DD-002
+DD-002|Deal desk policy & rules v1.3|MVP|0.5|Rules|MVP|rule-change|DD-001
+DD-003|Test deal set & answer keys|MVP|1.5|Tests|MVP||DD-002
 DD-004|Quote engine (slim)|MVP|1|Engine|MVP||DD-002 DD-003
 DD-006|Standard contract, clause playbook, contract generator|MVP|1|Tests|MVP||DD-003
 DD-014|Deterministic pre-check: hash, diff, regex|MVP|1|Engine|MVP||DD-006
 DD-007|LLM extraction for changed clauses|MVP|1|AI|MVP||DD-014
 DD-008|Comparator & decision|MVP|1|Engine|MVP||DD-004 DD-014 DD-007
-DD-005|Salesforce thin slice: gate, approvals, Flows|MVP|0|Salesforce|MVP||DD-002 DD-003
+DD-005|Salesforce thin slice: gate, terms approvals, Flows|MVP|0|Salesforce|MVP||DD-002 DD-003
 DD-005A|Booking gate|MVP|1|Salesforce|MVP||
-DD-005B|Price book and quote approvals|MVP|1.5|Salesforce|MVP||
+DD-005B|Price book and non-standard terms approval|MVP|1|Salesforce|MVP||
 DD-005C|Record-triggered Flows|MVP|1|Salesforce|MVP||DD-005B
 DD-013|Portfolio (slim)|MVP|0.5|Docs|MVP||DD-008 DD-005
 DD-012|Claude skills packaging + evals|Post-MVP|1|AI|Post-MVP||DD-004 DD-008

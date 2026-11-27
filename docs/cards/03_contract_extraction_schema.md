@@ -1,9 +1,9 @@
-# Contract extraction schema — `contract_extraction/v1.1`
+# Contract extraction schema — `contract_extraction/v1.2`
 
 In the MVP the deterministic pre-check (DD-014) fills slot fields first with regex, taking the matched text as `source_snippet`. The LLM (DD-007) fills only fields that come from changed or unrecognised clauses. Both write this same schema, and the deterministic value wins where both exist.
 
 The LLM's only job is to fill this schema from the text it is given. It makes no comparisons and no decisions. Code then:
-1. validates the JSON against `schemas/contract_extraction_v1.1.json`;
+1. validates the JSON against `schemas/contract_extraction_v1.2.json`;
 2. checks that every `source_snippet` appears verbatim in the contract text (whitespace-normalised). If it doesn't, the field is set to `not_found` and C-19 fires;
 3. runs the C-rules (DD-002 §8).
 
@@ -43,6 +43,7 @@ Every extracted field uses the same wrapper:
 | exits | `opt_out_present` | bool | C-15 |
 | | `opt_out_date` / `opt_out_notice_days` | date / int | C-15 |
 | credits | `credit_rollover_pct` | number (0 if none) | C-16 |
+| | `bonus_credits` | array of {contract_year, quantity, expiry} (empty if none) (v1.2) | C-23 |
 | legal | `liability_cap_months` | number or null (null = uncapped or not stated; see `status`) | C-17 |
 | | `governing_law` | string | C-17 |
 | | `other_non_standard_clauses[]` | array of {clause_type, summary, source_snippet} | C-17 |

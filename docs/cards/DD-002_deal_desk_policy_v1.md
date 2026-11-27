@@ -1,6 +1,6 @@
-# DD-002 — Deal desk policy & rules v1.2
+# DD-002 — Deal desk policy & rules v1.3
 
-> Human-readable version of `rules/deal_desk_rules_v1.2.json`. If they disagree, the JSON wins and the gap is a bug.
+> Human-readable version of `rules/deal_desk_rules_v1.3.json`. If they disagree, the JSON wins and the gap is a bug.
 > All prices are fictional, in EUR, and annual unless stated. The structure (platform plans + committed compute credits + overage) is modelled on Seqera's public pricing. The numbers are invented.
 
 ## Card
@@ -11,7 +11,7 @@
 ### What this card delivers
 | # | Deliverable | Where | What it contains |
 |---|---|---|---|
-| 1 | Machine-readable rules | `rules/deal_desk_rules_v1.2.json` | Every rule value with its ID; money as strings so code parses it with Decimal |
+| 1 | Machine-readable rules | `rules/deal_desk_rules_v1.3.json` | Every rule value with its ID; money as strings so code parses it with Decimal |
 | 2 | Human-readable policy | This file, sections 1 to 9 | The same rules in tables, with definitions and two worked examples |
 | 3 | Consistency tests | `tests/test_rules_consistency.py` | IDs unique, bands contiguous, credit tiers contiguous, every ID cited here exists in the JSON, worked example 1 reproduced |
 | 4 | Version history | JSON `change_log` + Change log below | What changed in each version and why |
@@ -21,14 +21,14 @@
 |---|---|---|---|
 | Price book | P-01 to P-12 | List price, applicable list (credit tiers, academic) | DD-004 quote engine; DD-005 Products, Pricebooks, `Applicable_List__c` |
 | Quote validation | Q-01 to Q-10 | Whether a quote can be submitted | DD-004 (Q-01, Q-03, Q-04, Q-05, Q-09, Q-10); DD-005 validation rules (Q-03, Q-04, Q-09) |
-| Discount bands | D-01 to D-04 | Approval level per line discount | DD-004 approvals; DD-005 Flow via Custom Metadata |
-| Approval rules | A-01 to A-08 | Chain order, TCV thresholds, validity, targets | DD-004; DD-005 Approval Process; C-18 |
-| Non-standard terms | N-01 to N-12 | Which exception needs which approver, or is not allowed | DD-004; DD-006 playbook variants; DD-014 known variants |
-| Contract checks | C-01 to C-22 | PASS / REVIEW / BLOCK per finding | DD-014 pre-check; DD-008 comparator; DD-005 findings |
+| Discount bands | D-01 to D-04 | **Reference only (v1.3).** Approved upstream in CPQ; not routed here | DD-004 applicable list and ARR/TCV only |
+| Approval rules | A-02 to A-08 (A-01 retired) | TCV thresholds, who reviews, validity, targets | DD-004; DD-005 Approval Process; C-18 |
+| Non-standard terms | N-01 to N-13 | Which exception needs which approver, or is not allowed | DD-004; DD-006 playbook variants; DD-014 known variants |
+| Contract checks | C-01 to C-23 | PASS / REVIEW / BLOCK per finding | DD-014 pre-check; DD-008 comparator; DD-005 findings |
 | KPIs | K-01 to K-11 | How results are measured | Test report (K-09 to K-11); DD-011 later (K-01 to K-08) |
 
 ### Values loaded into Salesforce (DD-005 Custom Metadata `Deal_Desk_Rule__mdt`)
-D-01 to D-04 band edges and approvers · A-02 and A-03 TCV thresholds · P-06 credit tier edges and discounts · P-12 academic factor. The load is generated from the JSON, so Salesforce and Python can't drift; the DD-005 parity test proves it.
+N-rule thresholds (payment days, term months, uplift cap, notice bands, rollover %) · A-02 and A-03 TCV thresholds · P-06 credit tier edges and discounts · P-12 academic factor. The load is generated from the JSON, so Salesforce and Python can't drift; the DD-005 parity test proves it.
 
 ### Decisions
 | Topic | Decided |
@@ -39,7 +39,7 @@ D-01 to D-04 band edges and approvers · A-02 and A-03 TCV thresholds · P-06 cr
 | Academic price | Becomes the applicable list; discount bands apply on top |
 | Credit tiers | Per contract year, on that year's committed quantity |
 | Free months | Count as discount (D-04) and reduce TCV, but don't reduce ARR |
-| Approval shape | Sequential chain Sales Manager → VP Sales → CRO up to the highest level needed; Deal Desk, Finance, CFO and Legal added in parallel |
+| Approval scope | Price and discount approvals happen upstream in CPQ; the approved net price arrives with the quote. This deal desk routes non-standard terms, contract language, rebates, volume commitments and deal-size review (A-02/A-03) to Deal Desk, Finance, CFO, CRO and Legal, in parallel |
 | Money tolerance in contract checks | ±€1 per line per year |
 | Changing a value | New version (e.g. v1.2 → v1.3) with a change-log reason, PR labelled `rule-change`, tests re-run. Never an in-place edit |
 | Calibration | Values are proposed; after DD-003 any change goes to v1.2 |
@@ -53,14 +53,16 @@ D-01 to D-04 band edges and approvers · A-02 and A-03 TCV thresholds · P-06 cr
 ### Acceptance criteria
 - [x] Rules v1.1 JSON with change log (N-06 short notice, K-11 precision)
 - [x] Rules v1.2: N-05 uplift cap policy and N-06 notice by segment
+- [x] Rules v1.3: price and discount approvals out of scope (CPQ); D-rules reference only; A-01 retired
+- [x] N-13 bonus credits (volume incentive) and C-23 added in v1.3
 - [x] Markdown matches the JSON (N-01 wording, legal-form suffixes)
 - [x] Every rule has an ID, and every rule group names the card that uses it
-- [x] `pytest tests/test_rules_consistency.py` passes on v1.2
+- [x] `pytest tests/test_rules_consistency.py` passes on v1.3
 - [x] Worked example 1 (3-year Enterprise with credit step-up) reproduced in a test
 - [ ] Worked example 2 (academic Pro with services discount) added to `tests/test_rules_consistency.py`
 - [x] OQ-1 and OQ-2 answered (released as v1.2)
-- [ ] Owner signs off on the v1.2 values
-- [ ] After DD-003: values calibrated against the test set; changes, if any, released as v1.3
+- [ ] Owner signs off on the v1.3 values
+- [ ] After DD-003: values calibrated against the test set; changes, if any, released as the next version
 
 **Proves:** "Review submitted quotes… multi-year, step-ups, non-standard terms"; "understands B2B deals: quotes, contracts, renewals, ARR/TCV".
 
@@ -119,6 +121,8 @@ Cloud Basic is free self-serve and can't be quoted.
 | Q-10 | Exactly one platform SKU (PLT-PRO or PLT-ENT-*) on new-business quotes |
 
 ## 4. Discount bands (D-rules)
+
+> **Reference only from v1.3.** Price and discount approvals are owned by CPQ at the quoting stage. This deal desk does not route the approvers below; the approved net price arrives with the quote. The bands stay here because they document the pricing policy and feed the applicable-list and ARR/TCV calculations.
 Effective line discount = 1 − net amount ÷ (applicable list × quantity), per contract year.
 
 | ID | Applies to | Band | Required approval |
@@ -140,14 +144,14 @@ Effective line discount = 1 − net amount ÷ (applicable list × quantity), per
 ## 5. Approval rules (A-rules)
 | ID | Rule |
 |---|---|
-| A-01 | The discount chain is sequential up to the highest level required: Sales Manager → VP Sales → CRO. CFO, Finance and Legal are added in parallel when a rule names them |
+| A-01 | *Retired in v1.3.* The discount approval chain is owned by CPQ upstream |
 | A-02 | TCV ≥ €250,000 → CRO review (in parallel; doesn't add VP Sales) |
 | A-03 | TCV ≥ €500,000 → CFO review as well |
-| A-04 | Deal Desk reviews every quote that needs VP Sales or higher, triggers any N-rule, or hits A-02/A-03 |
+| A-04 | Deal Desk reviews every quote that triggers any N-rule or hits A-02/A-03 |
 | A-05 | An approval is valid only for the exact quote version approved. Any change to price, quantity, term, dates or terms means re-approval |
 | A-06 | No one approves their own quote. An absent approver's standing deputy approves "on behalf of", and this is logged |
 | A-07 | An approval expires with the quote (30 days). Expired quotes need re-approval |
-| A-08 | Approval targets (for K-02): Sales Manager, VP Sales and Deal Desk 1 business day; CRO, CFO, Finance and Legal 2 business days |
+| A-08 | Approval targets (for K-02): Deal Desk 1 business day; CRO, CFO, Finance and Legal 2 business days |
 
 ## 6. Definitions (contract values)
 - **Recurring lines:** PLT-*, SUP-PREM, CMP-CRED. **One-off lines:** SVC-*. **Excluded everywhere:** CMP-OVG (overage), taxes, expenses.
@@ -157,6 +161,7 @@ Effective line discount = 1 − net amount ÷ (applicable list × quantity), per
 - **Expansion booked ARR:** ARR_1 of the added lines, annualised. **Renewal ARR:** ARR_1 of the renewal contract. Change against the expiring ARR splits into uplift (price), expansion (quantity or new SKU) and contraction.
 - **ACV:** (Σ ARR_y) ÷ term in years. Average annual recurring value, without one-offs.
 - **TCV:** Σ net recurring amounts actually invoiced over the term (free months deducted, partial years prorated) + Σ net one-off amounts. Overage is never included.
+- **Bonus credits (N-13) never count** in ARR, ACV or TCV: they are free and expire with the contract year.
 - **Committed credits count as recurring** (DEC-05) because they're contracted and prepaid every year. Overage and pay-as-you-go credits never count.
 - **Close date:** date of the last signature. **Booking date:** date Booking Status is set to Booked.
 
@@ -172,7 +177,7 @@ Effective line discount = 1 − net amount ÷ (applicable list × quantity), per
 - ACV = (146,000 + 193,500 + 231,000) ÷ 3 = **€190,166.67**
 - TCV = 570,500 + 8,000 = **€578,500**
 - N-04 step-up shape: Y1 ÷ average = 146,000 ÷ 190,166.67 = 76.8% (≥ 60%, passes); no step-downs (passes)
-- Approvals: D-01 15% → Sales Manager; A-02 → CRO; A-03 → CFO; A-04 → Deal Desk. **Result: Sales Manager, Deal Desk, CRO, CFO**
+- Approvals: the 15% discount was approved upstream in CPQ. A-02 → CRO; A-03 → CFO; A-04 → Deal Desk. **Result: Deal Desk, CRO, CFO**
 
 ### Worked example 2: 2-year academic Pro deal with a services discount
 Account has `Academic_Verified__c = true` (Q-08). 24 months, 20 users in total (Q-03: ≤ 50), 30,000 credits per year (Q-05: ≥ 10,000).
@@ -188,7 +193,7 @@ Account has `Academic_Verified__c = true` (Q-08). 24 months, 20 users in total (
 - ARR_1 = ARR_2 = 12,672 + 30,000 = **€42,672**; Booked ARR = **€42,672**; no step-up
 - ACV = **€42,672**
 - TCV = 42,672 × 2 + 3,600 = **€88,944**
-- Approvals: D-01 12% → Sales Manager; D-03 10% → Sales Manager; TCV below A-02. **Result: Sales Manager**
+- Approvals: discounts approved upstream in CPQ; no N-rule triggered; TCV below A-02. **Result: no deal desk approval needed**
 
 ## 7. Non-standard terms (N-rules)
 | ID | Term | Trigger | Approval |
@@ -205,6 +210,7 @@ Account has `Academic_Verified__c = true` (Q-08). 24 months, 20 users in total (
 | N-10 | Currency | Not EUR | Not allowed (v1) |
 | N-11 | Governing law | Not Spain | Legal |
 | N-12 | Delayed start | Start date > 90 days after quote date | Deal Desk |
+| N-13 | Bonus credits (volume incentive) | Free credits on top of committed CMP-CRED, as % of that year's commit: > 0–5% / > 5–10% / > 10%. Must expire with the contract year, can't be refunded or cashed, never count in ARR or TCV. Cash rebates and usage-based credit-back are not allowed | Deal Desk / Deal Desk + Finance / Not allowed |
 
 ## 8. Contract-to-booking checks (C-rules)
 Inputs: the signed contract (extracted to `03_contract_extraction_schema.md`), the Opportunity, the approved Quote with its lines, the Account and the approval log.
@@ -234,6 +240,7 @@ Money tolerance: ±€1 per line per year. Names are normalised (case, punctuati
 | C-20 | Document complete ("Page x of y" sequence intact) and has a text layer | REVIEW |
 | C-21 | Text addressed to an AI or system ("ignore previous instructions…") | REVIEW + security flag; never followed |
 | C-22 | Opportunity close date = last signature date | BLOCK if a different fiscal quarter; REVIEW if same quarter |
+| C-23 | Bonus credits appear only if approved under N-13, with the same quantity per year and the same expiry | BLOCK |
 
 **Outcome:** any BLOCK → **BLOCK**; otherwise any REVIEW → **REVIEW**; otherwise **PASS** ("ready to book"). A named Deal Desk or Finance user still clicks Book. Overrides need a reason code: `customer_amendment_pending`, `approved_post_signature`, `extraction_error`, `policy_exception_cfo` or `other` (free text required).
 
@@ -258,3 +265,4 @@ Business hours: Monday to Friday, 09:00–18:00 Europe/Madrid, excluding Spanish
 - v1.0: first version (proposed values, to be calibrated against the test set in DD-003).
 - v1.1: N-06 also triggers when non-renewal notice is under 60 days (closes a gap: shorter notice moves renewal risk to MoP). K-11 finding precision added so precision/recall scoring has a rule ID. Markdown fixes with no value change: N-01 wording now matches the JSON (> Net 30), legal-form suffix list matches the JSON.
 - v1.2: N-05 rewritten to the owner's uplift-cap policy (standard 5–7% or CPI + 2 pp, one renewal cycle, prior net price, platform and support only; below 5%, 0% hold, multi-cycle caps and caps on credit or usage rates need Deal Desk + Finance). Reason: protect renewal margin, stop multi-year price locks, keep usage pricing free to change. N-06 notice standard set by segment from the platform SKU (Pro 30–60 days, Enterprise 60–90 days), replacing the single 60-day standard. Reason: match market norms per segment.
+- v1.3: price and discount approvals moved out of scope; they are owned by CPQ at the quoting stage and the approved net price arrives with the quote. D-01 to D-04 kept as reference data, not routed. A-01 (discount chain) retired; A-04 and A-08 updated to match. N-13 bonus credits added (up to 5% Deal Desk, over 5–10% Deal Desk + Finance, above 10% or any cash rebate / usage credit-back not allowed) with contract check C-23. Reason: the deal desk approves terms, contract language, rebates and volume commitments, not price; usage-based SaaS usually rewards volume with credits rather than cash.

@@ -1,0 +1,387 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contract_extraction/v1.2",
+  "title": "Contract extraction v1.2",
+  "type": "object",
+  "$defs": {
+    "status": {
+      "enum": [
+        "found",
+        "not_found",
+        "ambiguous"
+      ]
+    },
+    "field": {
+      "type": "object",
+      "required": [
+        "value",
+        "source_snippet",
+        "page",
+        "confidence",
+        "status"
+      ],
+      "properties": {
+        "value": {},
+        "source_snippet": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "page": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "status": {
+          "$ref": "#/$defs/status"
+        }
+      },
+      "additionalProperties": false
+    },
+    "line_item": {
+      "type": "object",
+      "required": [
+        "sku",
+        "description",
+        "contract_year",
+        "quantity",
+        "net_amount",
+        "line_type",
+        "source_snippet",
+        "page",
+        "confidence"
+      ],
+      "properties": {
+        "sku": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "contract_year": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "quantity": {
+          "type": "number",
+          "minimum": 0
+        },
+        "unit_price": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "discount_pct": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "net_amount": {
+          "type": "number"
+        },
+        "line_type": {
+          "enum": [
+            "recurring",
+            "one_off",
+            "usage"
+          ]
+        },
+        "source_snippet": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "page": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "clause": {
+      "type": "object",
+      "required": [
+        "clause_type",
+        "summary",
+        "source_snippet"
+      ],
+      "properties": {
+        "clause_type": {
+          "enum": [
+            "liability",
+            "mfn",
+            "sla_credits",
+            "data_residency",
+            "governing_law",
+            "other"
+          ]
+        },
+        "summary": {
+          "type": "string"
+        },
+        "source_snippet": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "page": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "document",
+    "parties",
+    "signatures",
+    "term",
+    "line_items",
+    "billing",
+    "renewal",
+    "exits",
+    "credits",
+    "legal",
+    "safety"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "contract_extraction/v1.2"
+    },
+    "document": {
+      "type": "object",
+      "required": [
+        "contract_number",
+        "quote_reference",
+        "page_count_declared"
+      ],
+      "properties": {
+        "contract_number": {
+          "$ref": "#/$defs/field"
+        },
+        "quote_reference": {
+          "$ref": "#/$defs/field"
+        },
+        "page_count_declared": {
+          "$ref": "#/$defs/field"
+        }
+      }
+    },
+    "parties": {
+      "type": "object",
+      "required": [
+        "customer_legal_name",
+        "customer_vat_id",
+        "vendor_legal_name"
+      ],
+      "properties": {
+        "customer_legal_name": {
+          "$ref": "#/$defs/field"
+        },
+        "customer_vat_id": {
+          "$ref": "#/$defs/field"
+        },
+        "vendor_legal_name": {
+          "$ref": "#/$defs/field"
+        }
+      }
+    },
+    "signatures": {
+      "type": "object",
+      "required": [
+        "customer_signed",
+        "vendor_signed",
+        "customer_signature_date",
+        "vendor_signature_date"
+      ],
+      "properties": {
+        "customer_signed": {
+          "$ref": "#/$defs/field"
+        },
+        "vendor_signed": {
+          "$ref": "#/$defs/field"
+        },
+        "customer_signature_date": {
+          "$ref": "#/$defs/field"
+        },
+        "vendor_signature_date": {
+          "$ref": "#/$defs/field"
+        }
+      }
+    },
+    "term": {
+      "type": "object",
+      "required": [
+        "start_date",
+        "end_date",
+        "term_months",
+        "currency"
+      ],
+      "properties": {
+        "start_date": {
+          "$ref": "#/$defs/field"
+        },
+        "end_date": {
+          "$ref": "#/$defs/field"
+        },
+        "term_months": {
+          "$ref": "#/$defs/field"
+        },
+        "currency": {
+          "$ref": "#/$defs/field"
+        }
+      }
+    },
+    "line_items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/line_item"
+      }
+    },
+    "total_contract_value_stated": {
+      "$ref": "#/$defs/field"
+    },
+    "billing": {
+      "type": "object",
+      "required": [
+        "payment_terms_days",
+        "billing_frequency"
+      ],
+      "properties": {
+        "payment_terms_days": {
+          "$ref": "#/$defs/field"
+        },
+        "billing_frequency": {
+          "$ref": "#/$defs/field"
+        }
+      }
+    },
+    "renewal": {
+      "type": "object",
+      "required": [
+        "auto_renewal",
+        "non_renewal_notice_days",
+        "renewal_uplift_cap_pct",
+        "renewal_uplift_cap_basis",
+        "renewal_uplift_cap_cycles",
+        "renewal_uplift_cap_applies_to"
+      ],
+      "properties": {
+        "auto_renewal": {
+          "$ref": "#/$defs/field"
+        },
+        "non_renewal_notice_days": {
+          "$ref": "#/$defs/field"
+        },
+        "renewal_uplift_cap_pct": {
+          "$ref": "#/$defs/field"
+        },
+        "renewal_uplift_cap_basis": {
+          "$ref": "#/$defs/field"
+        },
+        "renewal_uplift_cap_cycles": {
+          "$ref": "#/$defs/field"
+        },
+        "renewal_uplift_cap_applies_to": {
+          "$ref": "#/$defs/field"
+        }
+      }
+    },
+    "exits": {
+      "type": "object",
+      "required": [
+        "opt_out_present",
+        "opt_out_date",
+        "opt_out_notice_days"
+      ],
+      "properties": {
+        "opt_out_present": {
+          "$ref": "#/$defs/field"
+        },
+        "opt_out_date": {
+          "$ref": "#/$defs/field"
+        },
+        "opt_out_notice_days": {
+          "$ref": "#/$defs/field"
+        }
+      }
+    },
+    "credits": {
+      "type": "object",
+      "required": [
+        "credit_rollover_pct",
+        "bonus_credits"
+      ],
+      "properties": {
+        "credit_rollover_pct": {
+          "$ref": "#/$defs/field"
+        },
+        "bonus_credits": {
+          "$ref": "#/$defs/field"
+        }
+      }
+    },
+    "legal": {
+      "type": "object",
+      "required": [
+        "liability_cap_months",
+        "governing_law",
+        "other_non_standard_clauses"
+      ],
+      "properties": {
+        "liability_cap_months": {
+          "$ref": "#/$defs/field"
+        },
+        "governing_law": {
+          "$ref": "#/$defs/field"
+        },
+        "other_non_standard_clauses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/clause"
+          }
+        }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "required": [
+        "embedded_instructions_detected",
+        "snippet"
+      ],
+      "properties": {
+        "embedded_instructions_detected": {
+          "type": "boolean"
+        },
+        "snippet": {
+          "type": "string",
+          "maxLength": 300
+        }
+      }
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

@@ -28,7 +28,7 @@ The deal desk fixes these with one written policy, an approval path the system w
 | Role | Needs | Uses |
 |---|---|---|
 | Account Executive (AE) | Fast, predictable approvals; knows upfront what needs approval | Quote approval status in Salesforce |
-| Sales Manager / VP Sales | Discount control without becoming a bottleneck | Approval requests |
+| Sales Manager / VP Sales | Price and discount approvals happen in CPQ, upstream of this deal desk | Informed of term approvals and booking status |
 | Deal Desk (Business Ops Analyst) | One policy, one queue, evidence for every exception | Quote review, contract check results, booking gate |
 | Finance / CFO | Bookings that match contracts; correct ARR and commission base | Booking status, check findings |
 | Legal | Non-standard clauses routed to them | Approval requests for N-rules |
@@ -40,8 +40,8 @@ R = does the work · A = owns the outcome (one per row) · C = consulted · I = 
 | Step | AE | Sales Mgr / VP / CRO | Deal Desk | Finance / CFO | Legal | Director RevOps | System |
 |---|---|---|---|---|---|---|---|
 | Build and submit the quote | R/A | I | I | | | | Validates Q-rules |
-| Work out the approval path | I | I | A | | | | R (D/A/N-rules) |
-| Approve discounts (D-rules, A-01 to A-03) | I | R/A per band | C | R for CFO bands | | | Routes |
+| Work out the approval path | I | I | A | | | | R (N-rules, A-02 to A-04) |
+| Review large deals (A-02 CRO, A-03 CFO) | I | R/A (CRO) | C | R/A (CFO) | | | Routes |
 | Approve non-standard terms (N-rules) | I | C | R/A for Deal Desk items | R/A for Finance/CFO items | R/A for legal items | | Routes |
 | Mark Closed Won at last signature | R | A | I | I | | | Sets Booking Status = Checking |
 | Run the contract check | | | A | I | | | R (pre-check, LLM, comparator) |
@@ -52,10 +52,10 @@ R = does the work · A = owns the outcome (one per row) · C = consulted · I = 
 ## Process map (to-be, MVP)
 ```mermaid
 flowchart TD
-  A[AE builds quote in Salesforce] --> B[Flow: credit tier price, max discount,<br/>Approval_Tier__c, Required_Approvers__c]
+  A[AE builds quote in Salesforce] --> B[Flow: Required_Approvers__c from<br/>non-standard terms and TCV<br/>price already approved in CPQ]
   B --> C{Approval needed?}
   C -- no --> E[Quote sent to customer]
-  C -- yes --> D[Approval Process:<br/>Sales Mgr → VP Sales → CRO,<br/>plus Deal Desk / Finance / CFO / Legal]
+  C -- yes --> D[Approval Process:<br/>Deal Desk / Finance / CFO / CRO / Legal<br/>as required]
   D -- approved --> E
   D -- rejected --> A
   E --> F[Contract signed by both parties]
@@ -92,7 +92,7 @@ As-is (for the before/after in DD-013): approvals by email or Slack with no writ
 - Invoicing, revenue recognition (ASC 606 / IFRS 15) and real ERP integration.
 - Commission calculation itself (only the booking data it relies on).
 - Usage metering of credits (that belongs to the Credit Burn & Renewal Radar).
-- Salesforce CPQ / Revenue Cloud. Standard Quotes are used instead.
+- Salesforce CPQ / Revenue Cloud, and with it **price and discount approvals**. They happen upstream at the quoting stage; the approved net price arrives with the quote (DEC-15). Standard Quotes are used to hold the data.
 - Real customer data of any kind.
 
 ## Decisions the system makes vs never makes
@@ -119,7 +119,8 @@ As-is (for the before/after in DD-013): approvals by email or Slack with no writ
 | DEC-11 | Test set size | 20 / 15 / 10 deals | **15**: 12 with exactly one planted error, 3 clean |
 | DEC-12 | ID for the deterministic pre-check card | Renumber DD-007+ / new ID | **DD-014**, built before DD-007; no references break |
 | DEC-13 | Precision KPI | K-11 in rules v1.1 / test report only | **K-11 in rules v1.1** (finding precision, test set) |
-| DEC-14 | Short non-renewal notice | Add "< 60 days" to N-06 in v1.1 / leave the gap | **Add in v1.1**: notice < 60 days → Deal Desk |
+| DEC-14 | Short non-renewal notice | Add "< 60 days" to N-06 in v1.1 / leave the gap | **Add in v1.1**: notice < 60 days → Deal Desk (replaced in v1.2 by segment bands) |
+| DEC-15 | Price and discount approvals | Route here / compute only / out of scope | **Out of scope (v1.3).** Owned by CPQ at the quoting stage. This deal desk approves terms, contract language, rebates, volume commitments and deal size (A-02/A-03) |
 
 ## Glossary
 One definition per term, kept in DD-002. This list only points to it.

@@ -6,7 +6,7 @@ MVP: the engine runs offline and hands results to Salesforce by CSV. Dashed boxe
 ```mermaid
 flowchart LR
   subgraph SF[Salesforce Developer Edition]
-    Q[Quote + Quote lines] -->|Record-triggered Flow| T[Approval_Tier__c<br/>Required_Approvers__c]
+    Q[Quote + Quote lines] -->|Record-triggered Flow| T[Required_Approvers__c<br/>terms + deal size]
     T --> AP[Approval Process]
     OPP[Opportunity<br/>Closed Won at signature] -->|Flow| BS[Booking_Status__c = Checking<br/>Contract_Check__c placeholder]
     CC[Contract_Check__c<br/>+ Findings]
@@ -14,7 +14,7 @@ flowchart LR
     BK[Deal Desk / Finance:<br/>clear + Book]
   end
   subgraph ENG[Deal desk engine - Python, offline]
-    R[(rules v1.2 JSON)]
+    R[(rules v1.3 JSON)]
     QE[Quote engine<br/>ARR/ACV/TCV, approvers]
     PC[Pre-check<br/>hash, template diff, regex]
     EX[LLM extraction<br/>changed clauses only<br/>Mistral default]

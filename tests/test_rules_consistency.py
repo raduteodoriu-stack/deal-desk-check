@@ -1,4 +1,4 @@
-"""DD-002: consistency checks for the current deal desk rules file (v1.2).
+"""DD-002: consistency checks for the current deal desk rules file (v1.3).
 
 These tests protect the rules JSON itself (no engine code yet):
 - IDs are unique and every rule ID cited in the policy doc exists in the JSON
@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-RULES_PATH = ROOT / "rules" / "deal_desk_rules_v1.2.json"
+RULES_PATH = ROOT / "rules" / "deal_desk_rules_v1.3.json"
 POLICY_DOC = ROOT / "docs" / "cards" / "DD-002_deal_desk_policy_v1.md"
 
 
