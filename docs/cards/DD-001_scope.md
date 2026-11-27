@@ -16,7 +16,7 @@ The deal desk fixes these with one written policy, an approval path the system w
 | # | Deliverable | Where | What it contains |
 |---|---|---|---|
 | 1 | Scope statement | This card: In scope / Out of scope | The MVP boundary and the deferred list, so every later card can be checked against it |
-| 2 | Decision log | This card: Decisions | DEC-01 to DEC-18 with the option chosen and why. New decisions get the next DEC number here |
+| 2 | Decision log | This card: Decisions | DEC-01 to DEC-19 with the option chosen and why. New decisions get the next DEC number here |
 | 3 | Stakeholder map and RACI | This card: Stakeholders, RACI | Who needs what, and who is Responsible / Accountable / Consulted / Informed at each step |
 | 4 | To-be process map | This card: Process map | The quote-to-booking flow the MVP implements, with the system steps and the human steps |
 | 5 | Glossary | This card: Glossary | Each term links to its definition in DD-002, so there is one definition per term |
@@ -124,6 +124,7 @@ As-is (for the before/after in DD-013): approvals by email or Slack with no writ
 | DEC-16 | Quote validation severity | Block by owner / block all / block by impact | **Block by impact (v1.4).** Q-01, Q-06, Q-07, Q-08, Q-10 block; CPQ product setup (Q-02 to Q-05, Q-09) warns; discount data checks Q-11 and Q-12 warn and are kept on record with who approved the discount in CPQ |
 | DEC-17 | Free months and bonus credits in contract values | ARR at run-rate, TCV invoiced / plus concession value | **ARR at the full yearly rate; TCV and ACV on what is invoiced; free months and bonus credits reported as a separate concession value (v1.4)** |
 | DEC-18 | Segment for expansions and renewals without a platform line | Contract amended / account default / require platform line | **The specific contract amended or renewed (v1.4)**, through `amended_contract_ref` / `Amended_Contract__c`, never an account-wide lookup; missing or inactive → Q-10 blocks |
+| DEC-19 | DD-006 contract and playbook model | Per decision: A / B / C (see DD-006) | **A for all five:** plain-text contracts with page markers (PDF post-MVP); clause-library IDs in headings; one fixed format per slot type; allowed variants as fixed wording with slots, matched by hash; English with ES / PT / FR governing-law variants |
 
 ## Glossary
 One definition per term, kept in DD-002. This list only points to it.
@@ -175,7 +176,7 @@ Measured on the synthetic test set. These are not claims about real impact.
 
 ## Acceptance criteria
 - [x] Scope, out of scope and stakeholders agreed
-- [x] DEC-01 to DEC-18 decided and recorded here
+- [x] DEC-01 to DEC-19 decided and recorded here
 - [x] RACI reviewed and agreed by the owner (Finance books and owns the booking; Deal Desk clears)
 - [ ] To-be process map reviewed; it matches the DD-005 Flows and the DD-008 outcomes
 - [x] Glossary terms link to DD-002, with no second definition anywhere else
