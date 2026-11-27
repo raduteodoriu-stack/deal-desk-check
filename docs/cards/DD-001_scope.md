@@ -16,7 +16,7 @@ The deal desk fixes these with one written policy, an approval path the system w
 | # | Deliverable | Where | What it contains |
 |---|---|---|---|
 | 1 | Scope statement | This card: In scope / Out of scope | The MVP boundary and the deferred list, so every later card can be checked against it |
-| 2 | Decision log | This card: Decisions | DEC-01 to DEC-20 with the option chosen and why. New decisions get the next DEC number here |
+| 2 | Decision log | This card: Decisions | DEC-01 to DEC-21 with the option chosen and why. New decisions get the next DEC number here |
 | 3 | Stakeholder map and RACI | This card: Stakeholders, RACI | Who needs what, and who is Responsible / Accountable / Consulted / Informed at each step |
 | 4 | To-be process map | This card: Process map | The quote-to-booking flow the MVP implements, with the system steps and the human steps |
 | 5 | Glossary | This card: Glossary | Each term links to its definition in DD-002, so there is one definition per term |
@@ -126,6 +126,7 @@ As-is (for the before/after in DD-013): approvals by email or Slack with no writ
 | DEC-18 | Segment for expansions and renewals without a platform line | Contract amended / account default / require platform line | **The specific contract amended or renewed (v1.4)**, through `amended_contract_ref` / `Amended_Contract__c`, never an account-wide lookup; missing or inactive → Q-10 blocks |
 | DEC-19 | DD-006 contract and playbook model | Per decision: A / B / C (see DD-006) | **A for all five:** plain-text contracts with page markers (PDF post-MVP); clause-library IDs in headings; one fixed format per slot type; allowed variants as fixed wording with slots, matched by hash; English with ES / PT / FR governing-law variants |
 | DEC-20 | DD-014 pre-check model | Per decision: A / B / C (see DD-014) | **A for all five:** template patterns with typed slot captures (fingerprint kept as evidence); word-level diff; only changed, unrecognised or unreadable clauses go to the LLM; deterministic injection screen before any LLM call (C-21); strict slot parser, unreadable values go to the LLM |
+| DEC-21 | DD-007 LLM extraction model | Per decision: A / B / C (see DD-007) | **A for all six:** provider JSON mode + local schema check + up to 2 repairs; one call per changed clause; verbatim snippet check (unverified → C-19); known names, VAT IDs and emails redacted before sending; small Claude model as the one comparison (synthetic data only, 3 runs); recorded fixtures for tests, live calls only with `--live`. Spend guard at €4 under the €5 cap |
 
 ## Glossary
 One definition per term, kept in DD-002. This list only points to it.
@@ -177,7 +178,7 @@ Measured on the synthetic test set. These are not claims about real impact.
 
 ## Acceptance criteria
 - [x] Scope, out of scope and stakeholders agreed
-- [x] DEC-01 to DEC-20 decided and recorded here
+- [x] DEC-01 to DEC-21 decided and recorded here
 - [x] RACI reviewed and agreed by the owner (Finance books and owns the booking; Deal Desk clears)
 - [ ] To-be process map reviewed; it matches the DD-005 Flows and the DD-008 outcomes
 - [x] Glossary terms link to DD-002, with no second definition anywhere else
