@@ -1,4 +1,4 @@
-"""DD-002: consistency checks for the current deal desk rules file (v1.3).
+"""DD-002: consistency checks for the current deal desk rules file (v1.4).
 
 These tests protect the rules JSON itself (no engine code yet):
 - IDs are unique and every rule ID cited in the policy doc exists in the JSON
@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-RULES_PATH = ROOT / "rules" / "deal_desk_rules_v1.3.json"
+RULES_PATH = ROOT / "rules" / "deal_desk_rules_v1.4.json"
 POLICY_DOC = ROOT / "docs" / "cards" / "DD-002_deal_desk_policy_v1.md"
 
 
@@ -118,3 +118,11 @@ def test_money_values_are_strings(rules):
     """Money is stored as strings so the engine parses it with Decimal, never float."""
     for p in rules["price_book"]:
         assert isinstance(p["list_price"], str), p["sku"]
+
+
+def test_quote_validation_severity(rules):
+    """v1.4 (DEC-16): every Q-rule says whether it blocks or warns."""
+    sev = {q["id"]: q.get("severity") for q in rules["quote_validation"]}
+    assert set(sev.values()) <= {"block", "warn"}, sev
+    assert {i for i, s in sev.items() if s == "block"} == {"Q-01", "Q-06", "Q-07", "Q-08", "Q-10"}
+    assert sev["Q-11"] == "warn" and sev["Q-12"] == "warn"

@@ -10,7 +10,7 @@ DD-005 needs only DD-002 and the DD-003 answer keys, so it can run alongside DD-
 | DD-001 | Scope & governance | MVP | — | 0.5 | "Redesigned a commercial process end to end… documented it" |
 | DD-002 | Deal desk policy & rules v1.2 | MVP | 001 | 0.5 | "Review submitted quotes… multi-year, step-ups, non-standard terms"; "ARR/TCV" |
 | DD-003 | Test deal set & answer keys | MVP | 002 | 1.5 | "You notice when numbers don't reconcile" |
-| DD-004 | Quote engine (slim) | MVP | 002, 003 | 1 | "Keep approvals moving" |
+| DD-004 | Quote engine (slim) | MVP | 002, 003 | 1.5 | "Keep approvals moving" |
 | DD-006 | Standard contract, clause playbook, contract generator | MVP | 003 | 1 | "Commercial runbooks, process maps, system documentation" |
 | DD-014 | Deterministic pre-check: hash, diff, regex | MVP | 006 | 1 | "AI workflows to remove manual work" (rules ahead of AI) |
 | DD-007 | LLM extraction for changed clauses | MVP | 014 | 1 | "AI workflows to remove manual work" |
@@ -22,19 +22,19 @@ DD-005 needs only DD-002 and the DD-003 answer keys, so it can run alongside DD-
 | DD-010 | Booking queue & Finance export | Post-MVP | 005, 009 | 1 | "Reconcile bookings with Finance" |
 | DD-011 | Deal desk analytics (dbt + Superset) | Post-MVP | 004, 010 | 1.5 | "Snowflake, dbt, Superset"; "analyse… turn findings into recommendations" |
 
-**MVP total: about 11 days.** Post-MVP: about 5 days.
+**MVP total: about 11.5 days.** Post-MVP: about 5 days.
 
 ---
 
 ## DD-003 — Test deal set & answer keys
 **Purpose:** prove the build against hand-written expectations that exist before any code. Every later card is "done" only when it matches these keys.
 
-**Story:** a deal desk earns trust by catching the one wrong number in a contract without crying wolf on the clean ones. To prove that, we need deals where we already know the right answer: 15 full deals (quote, opportunity, account, contract spec) and 8 quote-only cases. Each full deal has exactly one planted error or none, and every figure is worked out by hand, so the code can never mark its own homework.
+**Story:** a deal desk earns trust by catching the one wrong number in a contract without crying wolf on the clean ones. To prove that, we need deals where we already know the right answer: 15 full deals (quote, opportunity, account, contract spec) and 15 quote-only cases. Each full deal has exactly one planted error or none, and every figure is worked out by hand, so the code can never mark its own homework.
 
 **Decisions**
 | Topic | Decided |
 |---|---|
-| Size | 15 full deals (3 clean, 12 with one planted error) plus 9 quote-only cases for non-standard terms and contract language (DEC-11; price cases removed in v1.3) |
+| Size | 15 full deals (3 clean, 12 with one planted error) plus 15 quote-only cases for non-standard terms, contract language, quote validation and contract binding (DEC-11; price cases removed in v1.3; Q-rule cases added in v1.4) |
 | One planted error per deal | Yes. The key lists the **primary rule** (the one the error was planted for) and any **derived rules** the same error legitimately triggers (e.g. a wrong year-3 amount also changes TCV, so C-10 fires too). Precision counts derived rules as expected, not as false positives |
 | Clean deals include approved exceptions | Yes. DL-03 has approved non-standard terms that the contract matches, to prove approved exceptions don't cause false blocks |
 | Contract text | DD-003 writes a `contract_spec.json` per deal (which clause variants, which planted error). The DD-006 generator turns it into `contract.txt`. This removes the circular dependency between the two cards |
@@ -47,7 +47,7 @@ DD-005 needs only DD-002 and the DD-003 answer keys, so it can run alongside DD-
 | # | Deliverable | Where | What it contains |
 |---|---|---|---|
 | 1 | Deal bundles | `tests/deals/DL-01/` … `DL-15/` | `quote.json`, `opportunity.json`, `account.json`, `contract_spec.json` |
-| 2 | Quote-only cases | `tests/quotes/QT-01.json` … `QT-09.json` | A quote plus its account, no contract |
+| 2 | Quote-only cases | `tests/quotes/QT-01.json` … `QT-15.json` | A quote plus its account, no contract |
 | 3 | Deal answer key | `tests/answer_keys.csv` | One row per deal (columns below) |
 | 4 | Quote answer key | `tests/quote_keys.csv` | One row per quote-only case |
 | 5 | Hand workings | `tests/workings/DL-xx.md`, `QT-xx.md` | Line-by-line arithmetic for applicable list, discount, ARR_y, ACV, TCV, and the rule-by-rule approval reasoning |
@@ -89,47 +89,143 @@ Coverage: 12 C-rules as primary (C-03, C-05, C-08, C-09, C-11, C-13, C-14, C-15,
 | QT-07 | Pro, 12 months, uncapped liability and French governing law | Approvers: Legal (N-09, N-11), Deal Desk (A-04) |
 | QT-08 | Enterprise, 12 months, priced in USD | Not allowed (N-10) |
 | QT-09 | Enterprise, 24 months, 300,000 committed credits a year with 8% bonus credits (24,000 a year) | Approvers: Deal Desk + Finance (N-13 > 5–10%), Deal Desk (A-04); bonus credits excluded from ARR and TCV |
+| QT-10 | Pro, 12 months, academic prices on an account that is not academic-verified | Invalid (Q-08 blocks); not routed |
+| QT-11 | New business, 12 months, credits and support only, no platform SKU | Invalid (Q-10 blocks); not routed |
+| QT-12 | Pro, 12 months, 10% platform discount approved in CPQ by the Sales Manager; the credits line's net is €0.50 off list × quantity × discount, and a 5% support discount has no approver or CPQ reference | Valid, no approvers; warnings Q-11 (credits line) and Q-12 (support line), both kept on record with the approver as stated |
+| QT-13 | Expansion adding 100,000 credits a year, no platform line, 45-day non-renewal notice. The account has two active contracts: CT-A on PLT-PRO and CT-B on PLT-ENT-CLD; the quote references CT-B | Segment Enterprise (from CT-B, not CT-A). Notice 45 days is below the Enterprise band → Deal Desk (N-06, A-04). Under Pro it would be in band, so a wrong binding shows |
+| QT-14 | Early renewal of CT-C (PLT-ENT-CLD, still active for 4 more months), credits-only line, no platform line. The account also has a newer draft Pro contract CT-D | Segment Enterprise (bound to CT-C via `amended_contract_ref`); the draft CT-D is ignored |
+| QT-15 | Expansion with no platform line and no `amended_contract_ref` on an account with two active contracts | Invalid (Q-10 blocks: contract to amend not named); not routed |
 
 **File formats**
-- `quote.json`: quote_number, version, quote_date, start_date, end_date, term_months, currency, deal_type (new / expansion / renewal), account_ref, payment_terms_days, billing_frequency, non_standard_terms (the N-rule terms in their DD-002 shape), lines[] (sku, contract_year, quantity, list_price, applicable_list, discount_pct, net_amount), approvals[] (role, status, quote_version, approved_on). Money as strings.
+- `quote.json`: quote_number, version, quote_date, start_date, end_date, term_months, currency, deal_type (new / expansion / renewal), account_ref, payment_terms_days, billing_frequency, amended_contract_ref (expansions and renewals), non_standard_terms (the N-rule terms in their DD-002 shape), lines[] (sku, contract_year, quantity, list_price, applicable_list, discount_pct, net_amount, discount_approved_by, cpq_approval_ref), approvals[] (role, status, quote_version, approved_on). Money as strings.
 - `opportunity.json`: opportunity_ref, stage, close_date, quote_ref, booked_arr, acv, tcv, term_months, arr_schedule[].
-- `account.json`: account_ref, legal_name, vat_id, country, billing_contact (name, email), academic_verified.
+- `account.json`: account_ref, legal_name, vat_id, country, billing_contact (name, email), academic_verified, contracts[] (contract_ref, platform_sku, start_date, end_date, status: Draft / Active / Expired).
 - `contract_spec.json`: deal_id, template_version, clause_variants {clause_id: variant_id}, slot_values (what the contract states), planted_error {rule, field, quote_value, contract_value, description} or null.
 
 **Answer key columns** (`tests/answer_keys.csv`)
-deal_id, rules_version, segment, expected_outcome, primary_rule, expected_failed_rules (primary + derived, `;`-separated), expected_catching_stage, expected_approvers (role: rule reason, in A-01 order), expected_booked_arr, expected_acv, expected_tcv, expected_arr_schedule, notes.
-`tests/quote_keys.csv`: quote_id, rules_version, expected_valid, expected_blocking_rule, expected_approvers, expected_booked_arr, expected_acv, expected_tcv.
+deal_id, rules_version, segment, expected_outcome, primary_rule, expected_failed_rules (primary + derived, `;`-separated), expected_catching_stage, expected_approvers (role: rule reason, in the fixed role order), expected_booked_arr, expected_acv, expected_tcv, expected_concession_value, expected_arr_schedule, notes.
+`tests/quote_keys.csv`: quote_id, rules_version, expected_valid, expected_blocking_rule, expected_warnings, expected_approvers, expected_booked_arr, expected_acv, expected_tcv, expected_concession_value.
 
 **Acceptance criteria**
-- [ ] 15 deal bundles in `tests/deals/` and 9 quote-only cases in `tests/quotes/`, matching the catalogue above
+- [ ] 15 deal bundles in `tests/deals/` and 15 quote-only cases in `tests/quotes/`, matching the catalogue above
+- [ ] At least 3 quote-only cases that block on a Q-rule (QT-10 Q-08, QT-11 and QT-15 Q-10) and 1 that only warns (QT-12 Q-11, Q-12)
+- [ ] Contract-binding cases: QT-13 (two active contracts, Pro and Enterprise) and QT-14 (early renewal while the old contract is active) resolve the segment from the referenced contract only
 - [ ] 3 clean deals (expected PASS), including one with approved exceptions; 12 deals with exactly one planted error each
 - [ ] At least 10 different C-rules as primary rule; at least 3 errors caught only by the template diff and at least 3 only by regex
 - [ ] At least 1 prompt-injection contract (C-21) and 1 contract with a missing page (C-20)
 - [ ] Every full deal and quote-only case has an expected deal desk approver list (N-rules, A-02 to A-04) with the rule behind each approver, or "none"
 - [ ] No case tests price or discount approval (owned by CPQ)
 - [ ] Both worked examples from DD-002 appear as deals (DL-01, DL-02) with the same figures
-- [ ] `tests/answer_keys.csv` and `tests/quote_keys.csv` with the columns above, each row stating rules v1.2
+- [ ] `tests/answer_keys.csv` and `tests/quote_keys.csv` with the columns above, each row stating rules v1.4
 - [ ] Workings for every deal and case in `tests/workings/`, computed by hand, not by code under test
 - [ ] Every JSON file is valid and uses strings for money; every planted error is recorded in its `contract_spec.json`
 - [ ] Synthetic identities only: VAT IDs fail the official checksum; no real organisation or person names
 - [ ] Owner reviews and signs off in `tests/SIGNOFF.md` before DD-004 starts
 
-**Est. days:** 1.5 (was 1; the 9 quote-only cases are new).
+**Est. days:** 1.5 (was 1; the 15 quote-only cases are new).
 **Proves:** "You notice when numbers don't reconcile"; "check every closed-won deal against the signed contract before it's booked".
 
 ## DD-004 — Quote engine (slim)
-**Purpose:** compute the numbers and the approval path for every quote from the rules file, so Salesforce and the contract check have one source of truth.
-**Story:** the contract check needs ARR and TCV recomputed from the quote (C-10), and the Salesforce Flow must route the same approvers. One small Python engine does both and is checked against the answer keys.
-**Decisions:** only the Q-rules the test set uses are implemented now; the rest wait. Money is Decimal, never float.
+**Purpose:** for every quote, work out the contract values (ARR schedule, booked ARR, ACV, TCV) and the deal desk approval path from the rules file, so Salesforce, the contract check and the test keys all use one source of truth.
+
+**Story:** the price has already been approved in CPQ when a quote reaches the deal desk. What is still open is everything around the price: payment and billing terms, term length, renewal and uplift terms, opt-outs, rollover, bonus credits, legal language and deal size. Today someone reads each quote and guesses who has to sign off. The engine reads the quote, flags every non-standard term with its rule, lists the approvers with a reason each, and says "not allowed" where the policy forbids a term. It also produces the ARR and TCV figures that the contract check (C-10) and the booking need.
+
+**Decisions**
+| Topic | Decided |
+|---|---|
+| Scope boundary | Price and discounts are inputs approved upstream in CPQ (DEC-15). D-rules are not routed. The engine only checks each line's arithmetic (Q-11) and that each discounted line names who approved the discount in CPQ (Q-12). Both are warnings kept on record, never approvals |
+| Rules source | Only `rules/deal_desk_rules_v1.4.json` (path passed in, never hard-coded). The result records the rules version it used. No threshold appears in code |
+| Money | `Decimal` everywhere; amounts quantised to cents (ROUND_HALF_UP) at line level; ACV quantised to cents at the end |
+| Free months (D-04 data) | A line carries run-rate `net_amount` plus `free_months`. ARR uses the full yearly rate. TCV and ACV use what is invoiced = net × (months billed ÷ 12); ACV = invoiced recurring ÷ term years (rules v1.4). The free months' value (net × free months ÷ 12) goes into `concessions`. Example: 3 years at €60,000 with 2 free months → ARR 60,000, TCV 170,000, ACV 56,666.67, concession 10,000 |
+| Partial years (co-term expansions) | ARR_y annualised × 12 ÷ months in that year; TCV uses the actual months |
+| Bonus credits (N-13) | Lines flagged `bonus: true` at zero price; excluded from ARR, ACV and TCV; their % of committed credits drives N-13. Their value at the applicable list price for that year's credit tier goes into `concessions`, so it can be reported |
+| Segment (N-06) | From the quote's platform SKU: PLT-PRO = SMB / Mid-Market, PLT-ENT-* = Enterprise. Expansion and renewal quotes without a platform line take the segment from the platform SKU of the **specific contract they amend or renew**, named in `amended_contract_ref` (Salesforce `Amended_Contract__c` on Quote and Opportunity, standing in for the CPQ amendment / renewal lookup). Never an account-wide "find the active contract" query, because an account can hold two active contracts (e.g. one business unit on Pro, one on Enterprise) or an early renewal while the old contract still runs. Missing reference, a contract on another account, or a contract that isn't active on the quote's start date → invalid under Q-10 (rules v1.4, DEC-18). Q-07 co-terms against the same contract |
+| Approver output | One entry per role, in a fixed order (Deal Desk, Finance, CFO, CRO, Legal), each with every rule and reason that put it there. All approvers are parallel (A-01 retired) |
+| "Not allowed" | Any not-allowed term (N-07 other shapes, N-08 > 25%, N-10, N-13 > 10% or cash rebate) makes the quote invalid with the rule named. It is not routed |
+| Q-rules | Severity comes from the rules file (v1.4, DEC-16). **Block** anything that would make the numbers, eligibility or the contract wrong: Q-01 dates, Q-06 account data, Q-07 co-term, Q-08 academic eligibility, Q-10 one platform SKU. **Warn** on product setup owned by CPQ: Q-02 to Q-05 and Q-09. A blocked quote is invalid and not routed; a warned quote is routed as normal |
+| Discount record | Each quote line carries `discount_approved_by` (who approved the discount in CPQ, e.g. "Sales Manager") and `cpq_approval_ref`. Q-11 (net ≠ applicable list × quantity × (1 − discount), beyond ±€0.01) and Q-12 (discounted line without approver or reference) are warnings. Each one is returned in `discount_checks`, written to the batch CSV, and appended to `records/discount_warnings.csv` (run time, quote and version, line, SKU, discount %, expected net, stated net, difference, approver, CPQ reference, rules version). The file is append-only and git-ignored, like logs |
+| Interface | Pure functions plus a small command line; no Salesforce or network calls |
+
+**What this card delivers**
+| # | Deliverable | Where | What it does |
+|---|---|---|---|
+| 1 | Rules loader | `dealdesk/rules.py` | Loads a rules file by path, parses money to `Decimal`, checks `rules_version`, exposes typed accessors (N-rule bands, TCV thresholds, segment bands, credit tiers) |
+| 2 | Data models | `dealdesk/models.py` | Pydantic models for Quote, QuoteLine (with `discount_approved_by`, `cpq_approval_ref`), Account, NonStandardTerms and QuoteReviewResult, matching the DD-003 JSON formats |
+| 3 | Contract values | `dealdesk/quote.py` | Contract years, applicable list (credit tier, academic), line consistency check, ARR_y schedule, booked ARR, step-ups, ACV, TCV |
+| 4 | Approval router | `dealdesk/approvals.py` | N-01 to N-13 detection, A-02/A-03 deal-size review, A-04 Deal Desk, not-allowed list, reason codes |
+| 5 | Command line | `dealdesk/review.py` | `python -m dealdesk.review <quote.json> --rules rules/deal_desk_rules_v1.4.json` prints the result JSON; `--batch tests/deals tests/quotes --csv out.csv` writes one row per quote |
+| 6 | Tests | `tests/test_quote_engine.py`, `tests/test_approvals.py` | Answer-key tests plus boundary tests per rule |
+
+**How it works (per quote)**
+1. Load the rules file and the quote and account. For expansions and renewals, load the one contract named in `amended_contract_ref` from the account's contracts.
+2. Validate: Q-rules with severity `block` (Q-01, Q-06, Q-07, Q-08, Q-10) make the quote invalid; `warn` rules (Q-02 to Q-05, Q-09) are returned as warnings.
+3. Build contract years from start date and term (last year partial if co-termed).
+4. Check each line: net amount = applicable list × quantity × (1 − discount) within ±€0.01 (Q-11), and a discounted line names its CPQ approver and approval reference (Q-12). Either failure is a warning, recorded with who gave the discount; it means the CPQ data needs a look, not that the price needs approval here.
+5. Compute ARR_y (recurring lines, run-rate, bonus credits excluded), booked ARR (ARR_1, or ARR_1 of added lines for expansions), contracted step-ups, ACV = Σ invoiced recurring ÷ term years, concessions (free months at run-rate, bonus credits at applicable list) with `concession_value` as their total, TCV = Σ invoiced recurring + Σ one-off.
+6. Detect non-standard terms N-01 to N-13 from the quote's terms and the ARR schedule (N-04 step shape).
+7. Add deal-size review: A-02 (TCV ≥ €250,000 → CRO), A-03 (TCV ≥ €500,000 → CFO); A-04 Deal Desk if any N-rule or A-02/A-03 fired.
+8. Collect not-allowed terms; if any, the quote is invalid.
+9. Return `quote_review_result/v1`.
+
+**Output: `quote_review_result/v1`**
+```json
+{
+  "quote_number": "Q-00123", "version": 2, "rules_version": "1.4",
+  "valid": true,
+  "blocking": [],
+  "warnings": [{"rule": "Q-12", "message": "Line 1 PLT-ENT-CLD: 15% discount has no CPQ approval reference"}],
+  "discount_checks": [
+    {"line": 1, "sku": "PLT-ENT-CLD", "contract_year": 1, "discount_pct": "15",
+     "expected_net": "51000.00", "stated_net": "51000.00", "difference": "0.00",
+     "discount_approved_by": "Sales Manager", "cpq_approval_ref": null, "warnings": ["Q-12"]}
+  ],
+  "segment": "Enterprise",
+  "arr_schedule": ["146000.00", "193500.00", "231000.00"],
+  "booked_arr": "146000.00", "step_ups": ["47500.00", "37500.00"],
+  "acv": "190166.67", "tcv": "578500.00",
+  "concession_value": "0.00", "concessions": [],
+  "non_standard_terms": [{"rule": "N-01", "detail": "Net 45"}],
+  "approvers": [
+    {"role": "Deal Desk", "reasons": ["A-04: N-01, A-02, A-03 triggered"]},
+    {"role": "Finance", "reasons": ["N-01: Net 45"]},
+    {"role": "CFO", "reasons": ["A-03: TCV 578,500 ≥ 500,000"]},
+    {"role": "CRO", "reasons": ["A-02: TCV 578,500 ≥ 250,000"]}
+  ],
+  "not_allowed": []
+}
+```
+Money is returned as strings so no float ever touches it.
+
+**Failure modes**
+| Situation | Behaviour |
+|---|---|
+| Rules file missing, unreadable or a different version than expected | Stop with a clear error; never fall back to defaults |
+| Unknown SKU or SKU not in the price book | Warning (Q-02, CPQ-owned); line still counted at its stated net |
+| Required quote or account field missing | Invalid, with the Q-rule or field named |
+| Expansion or renewal with no platform line and no `amended_contract_ref`, or the reference points to another account's contract or one not active on the start date | Invalid (Q-10), with the reason; the engine never guesses a contract from the account |
+| A term the engine can't classify (e.g. free-text legal clause on the quote) | Routed to Legal with reason "unclassified term", never ignored |
+| Overage (CMP-OVG) quoted as a quantity | Warning (Q-09); excluded from ARR and TCV regardless |
+| Net amount doesn't match list × quantity × discount, or a discount has no CPQ approver | Warning (Q-11 / Q-12) with the approver as recorded on the quote; appended to `records/discount_warnings.csv`; routing unchanged |
+| `records/` not writable | Stop with a clear error; a discount warning is never dropped silently |
+
 **Acceptance criteria**
-- [ ] `dealdesk/quote.py`: applicable list (credit tiers, academic), effective line discount, ARR schedule, booked ARR, ACV, TCV
-- [ ] `dealdesk/approvals.py`: approver list from the N-rules and A-02 to A-04 with reason codes, e.g. `["Finance: N-01 Net 45", "CRO: A-02 TCV ≥ 250k"]`; "not allowed" results for N-07, N-08 and N-10 shapes
-- [ ] D-rules are not routed (price approvals happen upstream in CPQ); discounts on the quote are read as inputs only
-- [ ] Q-rules limited to those the test set uses (Q-01, Q-03, Q-04, Q-05, Q-09, Q-10); the rest are deferred
-- [ ] Rules read only from the current rules JSON; no thresholds hard-coded
-- [ ] Decimal arithmetic; amounts rounded to cents only at line level; the DD-002 §6 worked example reproduced to the cent
-- [ ] Pytest: every DD-003 quote key matches
-- [ ] Output `quote_review_result/v1` JSON, also flattened to CSV for the DD-005 parity check (one row per quote: approvers, ARR, ACV, TCV)
+- [ ] `dealdesk/rules.py`, `models.py`, `quote.py`, `approvals.py`, `review.py` as described; no threshold hard-coded (a test swaps a threshold in a temporary rules copy and the result changes)
+- [ ] Severity read from the rules file: Q-01, Q-06, Q-07, Q-08 and Q-10 block (quote invalid, not routed); Q-02 to Q-05 and Q-09 return warnings
+- [ ] Q-11 line check (net vs list × quantity × discount, ±€0.01) and Q-12 discount provenance return warnings, never approvals; tests at €0.01 / €0.02 difference and with approver present / missing
+- [ ] Every Q-11 / Q-12 warning appears in `discount_checks`, the batch CSV and `records/discount_warnings.csv`, with `discount_approved_by` and `cpq_approval_ref` as stated on the quote
+- [ ] ARR schedule, booked ARR, step-ups, ACV and TCV in `Decimal`, cents at line level; free months, partial years and bonus credits handled as in Decisions
+- [ ] Free months test: 3 years at €60,000 with 2 free months gives ARR 60,000 / 60,000 / 60,000, TCV 170,000, ACV 56,666.67 and concession value 10,000
+- [ ] Bonus credits test: QT-09 (24,000 bonus credits a year) leaves ARR, ACV and TCV unchanged and reports the credits at the applicable list price as concession value
+- [ ] DD-002 worked example 1 reproduced to the cent (ARR 146,000 / 193,500 / 231,000; ACV 190,166.67; TCV 578,500; approvers Deal Desk, CRO, CFO) and worked example 2 (ARR 42,672; TCV 88,944; no approvers)
+- [ ] N-01 to N-13, A-02, A-03 and A-04 each have boundary tests on both sides of every threshold (e.g. Net 30 / 31 / 60 / 61; notice 29 / 30 / 60 / 61 for Pro and 59 / 60 / 90 / 91 for Enterprise; uplift cap 4.99 / 5 and the CPI + 2 case; bonus credits 5 / 5.01 / 10 / 10.01%; TCV 249,999.99 / 250,000)
+- [ ] Every DD-003 deal and quote-only case matches `answer_keys.csv` / `quote_keys.csv`: valid flag, blocking rule, approvers with rules, booked ARR, ACV, TCV
+- [ ] Approver list is deduplicated, in the fixed role order, and every entry carries its rule reasons
+- [ ] Segment binding tests: two active contracts on one account (Pro and Enterprise) resolve to the referenced one only; early renewal while the old contract is active binds to the contract being renewed; missing reference, other-account reference and inactive contract each block under Q-10
+- [ ] `python -m dealdesk.review --batch` writes the CSV used by the DD-005 Flow parity check
+- [ ] `pytest -q` passes offline, with no network calls
+
+**Est. days:** 1.5 (was 1; N-13, segment bands and boundary tests added).
+**Proves:** "Review submitted quotes… multi-year, step-ups, non-standard terms"; "keep approvals moving"; "understands B2B deals: ARR/TCV".
 
 ## DD-006 — Standard contract, clause playbook, contract generator
 **Purpose:** give the checker a fixed standard to compare against, and give reviewers a written playbook of what is allowed.
@@ -186,7 +282,7 @@ deal_id, rules_version, segment, expected_outcome, primary_rule, expected_failed
 **Decisions:** standard Quotes, not CPQ. The gate is on Booking Status, not Stage (DEC-10). Validation rules and Flow are used instead of Apex because they are native, admin-maintainable and auditable.
 
 **A. Booking gate**
-- [ ] Opportunity fields: `Booking_Status__c` (Not Ready, Checking, Review, Blocked, Ready to Book, Booked), `Booked_ARR__c`, `ACV__c`, `TCV__c`, `Term_Months__c`, `Booking_Date__c`
+- [ ] Opportunity fields: `Booking_Status__c` (Not Ready, Checking, Review, Blocked, Ready to Book, Booked), `Booked_ARR__c`, `ACV__c`, `TCV__c`, `Concession_Value__c`, `Term_Months__c`, `Booking_Date__c`
 - [ ] Custom object `Contract_Check__c` (lookup to Opportunity): `Outcome__c` (PASS / REVIEW / BLOCK), `Failed_Rules__c`, `Rules_Version__c`, `Run_At__c`, `Is_Latest__c`, `Cleared_By__c` (User), `Cleared_At__c`, `Clear_Reason_Code__c` (the 5 DD-002 override codes), `Clear_Reason__c`
 - [ ] Child object `Contract_Check_Finding__c` (master-detail): `Rule__c`, `Severity__c`, `Expected__c`, `Found__c`, `Evidence__c`
 - [ ] Opportunity fields for the latest check (`Latest_Check_Outcome__c`, `Latest_Check_Cleared__c`), set by the Flow in C
@@ -200,8 +296,9 @@ deal_id, rules_version, segment, expected_outcome, primary_rule, expected_failed
 - [ ] Quotes enabled; Product2 for every price-book SKU (P-01 to P-11); Pricebooks "MoP Standard" and "MoP Academic" (P-12)
 - [ ] CMP-CRED has one PricebookEntry at €1.00; the tier price is stored on the line as `Applicable_List__c` (standard price books have no volume tiers)
 - [ ] QuoteLineItem fields: `Contract_Year__c`, `Applicable_List__c`, `Rule_Family__c` (discount fields stay as data; price approval is upstream in CPQ)
-- [ ] Quote fields for the N-rule terms: `Payment_Terms_Days__c`, `Billing_Frequency__c`, `Auto_Renewal__c`, `Non_Renewal_Notice_Days__c`, `Uplift_Cap_Pct__c`, `Uplift_Cap_Basis__c`, `Uplift_Cap_Cycles__c`, `Uplift_Cap_On_Usage__c`, `Opt_Out__c`, `Opt_Out_Notice_Days__c`, `Credit_Rollover_Pct__c`, `Liability_Cap_Months__c`, `Governing_Law__c`, plus `Required_Approvers__c`
-- [ ] Validation rules for Q-03, Q-04, Q-09 and the "not allowed" terms (N-07 other opt-out shapes, N-08 rollover > 25%, N-10 non-EUR)
+- [ ] Quote fields for the N-rule terms: `Payment_Terms_Days__c`, `Billing_Frequency__c`, `Auto_Renewal__c`, `Non_Renewal_Notice_Days__c`, `Uplift_Cap_Pct__c`, `Uplift_Cap_Basis__c`, `Uplift_Cap_Cycles__c`, `Uplift_Cap_On_Usage__c`, `Opt_Out__c`, `Opt_Out_Notice_Days__c`, `Credit_Rollover_Pct__c`, `Liability_Cap_Months__c`, `Governing_Law__c`, plus `Required_Approvers__c` and `Amended_Contract__c` (lookup to Contract; also on Opportunity), standing in for the CPQ amendment / renewal lookup
+- [ ] Validation rules for the blocking Q-rules Salesforce can see on the quote (Q-01 dates, Q-08 academic eligibility) and the "not allowed" terms (N-07 other opt-out shapes, N-08 rollover > 25%, N-10 non-EUR). Q-10 (one platform SKU, or for expansions and renewals an active `Amended_Contract__c` on the same account) is checked by the Quote Flow in C, which reads the segment from that contract, never from an account-wide query. Product-setup checks (Q-02 to Q-05, Q-09) stay in CPQ and are not rebuilt here (DEC-16)
+- [ ] QuoteLineItem fields `Discount_Approved_By__c` and `CPQ_Approval_Ref__c`, so the discount's origin is visible on the quote
 - [ ] Approval Process on Quote for non-standard terms and deal size: Deal Desk, Finance, CFO, CRO and Legal steps, each entered only when `Required_Approvers__c` names it
 - [ ] A-05: a change to price, quantity, term or dates on an approved quote resets its approval status
 - [ ] Manual test script `docs/sf_test_script.md`: one quote per N-rule plus the DD-002 worked example (expected: Deal Desk, CRO, CFO)

@@ -16,7 +16,7 @@ As deals get more complex (multi-year terms, step-ups, committed credits, non-st
 | Card | Title | Phase | Status |
 |---|---|---|---|
 | DD-001 | Scope & governance | MVP | Decisions recorded |
-| DD-002 | Policy & rules v1.3 | MVP | Draft (proposed values) |
+| DD-002 | Policy & rules v1.4 | MVP | Draft (proposed values) |
 | DD-003 | Test deal set & answer keys | MVP | Next |
 | DD-004 | Quote engine (slim) | MVP | Not started |
 | DD-006 | Standard contract, clause playbook, generator | MVP | Not started |

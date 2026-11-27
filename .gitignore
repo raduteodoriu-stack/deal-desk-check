@@ -20,6 +20,7 @@ docs/seqera_context.md
 
 # ---- Raw LLM output and run logs (recorded test fixtures under tests/ stay tracked) ----
 logs/
+records/
 *.log
 extractor/runs/
 extractor/raw/

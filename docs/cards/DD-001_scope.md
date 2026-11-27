@@ -121,6 +121,9 @@ As-is (for the before/after in DD-013): approvals by email or Slack with no writ
 | DEC-13 | Precision KPI | K-11 in rules v1.1 / test report only | **K-11 in rules v1.1** (finding precision, test set) |
 | DEC-14 | Short non-renewal notice | Add "< 60 days" to N-06 in v1.1 / leave the gap | **Add in v1.1**: notice < 60 days → Deal Desk (replaced in v1.2 by segment bands) |
 | DEC-15 | Price and discount approvals | Route here / compute only / out of scope | **Out of scope (v1.3).** Owned by CPQ at the quoting stage. This deal desk approves terms, contract language, rebates, volume commitments and deal size (A-02/A-03) |
+| DEC-16 | Quote validation severity | Block by owner / block all / block by impact | **Block by impact (v1.4).** Q-01, Q-06, Q-07, Q-08, Q-10 block; CPQ product setup (Q-02 to Q-05, Q-09) warns; discount data checks Q-11 and Q-12 warn and are kept on record with who approved the discount in CPQ |
+| DEC-17 | Free months and bonus credits in contract values | ARR at run-rate, TCV invoiced / plus concession value | **ARR at the full yearly rate; TCV and ACV on what is invoiced; free months and bonus credits reported as a separate concession value (v1.4)** |
+| DEC-18 | Segment for expansions and renewals without a platform line | Contract amended / account default / require platform line | **The specific contract amended or renewed (v1.4)**, through `amended_contract_ref` / `Amended_Contract__c`, never an account-wide lookup; missing or inactive → Q-10 blocks |
 
 ## Glossary
 One definition per term, kept in DD-002. This list only points to it.

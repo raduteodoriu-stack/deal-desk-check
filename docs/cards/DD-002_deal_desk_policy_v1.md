@@ -1,6 +1,6 @@
-# DD-002 — Deal desk policy & rules v1.3
+# DD-002 — Deal desk policy & rules v1.4
 
-> Human-readable version of `rules/deal_desk_rules_v1.3.json`. If they disagree, the JSON wins and the gap is a bug.
+> Human-readable version of `rules/deal_desk_rules_v1.4.json`. If they disagree, the JSON wins and the gap is a bug.
 > All prices are fictional, in EUR, and annual unless stated. The structure (platform plans + committed compute credits + overage) is modelled on Seqera's public pricing. The numbers are invented.
 
 ## Card
@@ -11,7 +11,7 @@
 ### What this card delivers
 | # | Deliverable | Where | What it contains |
 |---|---|---|---|
-| 1 | Machine-readable rules | `rules/deal_desk_rules_v1.3.json` | Every rule value with its ID; money as strings so code parses it with Decimal |
+| 1 | Machine-readable rules | `rules/deal_desk_rules_v1.4.json` | Every rule value with its ID; money as strings so code parses it with Decimal |
 | 2 | Human-readable policy | This file, sections 1 to 9 | The same rules in tables, with definitions and two worked examples |
 | 3 | Consistency tests | `tests/test_rules_consistency.py` | IDs unique, bands contiguous, credit tiers contiguous, every ID cited here exists in the JSON, worked example 1 reproduced |
 | 4 | Version history | JSON `change_log` + Change log below | What changed in each version and why |
@@ -20,7 +20,7 @@
 | Group | IDs | What it decides | Used by |
 |---|---|---|---|
 | Price book | P-01 to P-12 | List price, applicable list (credit tiers, academic) | DD-004 quote engine; DD-005 Products, Pricebooks, `Applicable_List__c` |
-| Quote validation | Q-01 to Q-10 | Whether a quote can be submitted | DD-004 (Q-01, Q-03, Q-04, Q-05, Q-09, Q-10); DD-005 validation rules (Q-03, Q-04, Q-09) |
+| Quote validation | Q-01 to Q-12 | Whether a quote can be submitted (block) or goes ahead with a recorded warning (warn) | DD-004 (all); DD-005 validation rules (Q-01, Q-08) and Quote Flow (Q-10) |
 | Discount bands | D-01 to D-04 | **Reference only (v1.3).** Approved upstream in CPQ; not routed here | DD-004 applicable list and ARR/TCV only |
 | Approval rules | A-02 to A-08 (A-01 retired) | TCV thresholds, who reviews, validity, targets | DD-004; DD-005 Approval Process; C-18 |
 | Non-standard terms | N-01 to N-13 | Which exception needs which approver, or is not allowed | DD-004; DD-006 playbook variants; DD-014 known variants |
@@ -38,9 +38,10 @@ N-rule thresholds (payment days, term months, uplift cap, notice bands, rollover
 | Discount measure | Per line, per contract year, against the applicable list (after credit tier or academic price) |
 | Academic price | Becomes the applicable list; discount bands apply on top |
 | Credit tiers | Per contract year, on that year's committed quantity |
-| Free months | Count as discount (D-04) and reduce TCV, but don't reduce ARR |
+| Free months | Don't reduce ARR (full yearly rate). Reduce TCV and ACV, which use what is actually invoiced. Their value is recorded as a concession |
 | Approval scope | Price and discount approvals happen upstream in CPQ; the approved net price arrives with the quote. This deal desk routes non-standard terms, contract language, rebates, volume commitments and deal-size review (A-02/A-03) to Deal Desk, Finance, CFO, CRO and Legal, in parallel |
 | Money tolerance in contract checks | ±€1 per line per year |
+| Quote validation severity (v1.4) | Block anything that would make the numbers, eligibility or the contract wrong (Q-01, Q-06, Q-07, Q-08, Q-10). Warn on product setup owned by CPQ (Q-02 to Q-05, Q-09) and on discount data (Q-11, Q-12). Warnings are kept on record |
 | Changing a value | New version (e.g. v1.2 → v1.3) with a change-log reason, PR labelled `rule-change`, tests re-run. Never an in-place edit |
 | Calibration | Values are proposed; after DD-003 any change goes to v1.2 |
 
@@ -55,13 +56,14 @@ N-rule thresholds (payment days, term months, uplift cap, notice bands, rollover
 - [x] Rules v1.2: N-05 uplift cap policy and N-06 notice by segment
 - [x] Rules v1.3: price and discount approvals out of scope (CPQ); D-rules reference only; A-01 retired
 - [x] N-13 bonus credits (volume incentive) and C-23 added in v1.3
+- [x] Rules v1.4: Q-rule severity (block / warn), Q-11 line arithmetic and Q-12 discount provenance as recorded warnings
 - [x] Markdown matches the JSON (N-01 wording, legal-form suffixes)
 - [x] Every rule has an ID, and every rule group names the card that uses it
-- [x] `pytest tests/test_rules_consistency.py` passes on v1.3
+- [x] `pytest tests/test_rules_consistency.py` passes on v1.4
 - [x] Worked example 1 (3-year Enterprise with credit step-up) reproduced in a test
 - [ ] Worked example 2 (academic Pro with services discount) added to `tests/test_rules_consistency.py`
 - [x] OQ-1 and OQ-2 answered (released as v1.2)
-- [ ] Owner signs off on the v1.3 values
+- [ ] Owner signs off on the v1.4 values
 - [ ] After DD-003: values calibrated against the test set; changes, if any, released as the next version
 
 **Proves:** "Review submitted quotes… multi-year, step-ups, non-standard terms"; "understands B2B deals: quotes, contracts, renewals, ARR/TCV".
@@ -106,19 +108,25 @@ N-rule thresholds (payment days, term months, uplift cap, notice bands, rollover
 
 Cloud Basic is free self-serve and can't be quoted.
 
-## 3. Quote validation (Q-rules). Any failure means the quote can't be submitted.
-| ID | Rule |
-|---|---|
-| Q-01 | Start date ≥ quote date; end date = start date + term − 1 day |
-| Q-02 | Every SKU is active in the price book, and its list price equals the price book entry |
-| Q-03 | PLT-PRO users in total (10 included + additional) ≤ 50 |
-| Q-04 | SUP-PREM can't be quoted with PLT-ENT-* |
-| Q-05 | If credits are quoted, ≥ 10,000 CMP-CRED per contract year |
-| Q-06 | Account has a legal entity name, VAT ID and billing contact |
-| Q-07 | Expansion quotes co-term: end date = end date of the existing contract |
-| Q-08 | Academic prices only when `Academic_Verified__c = true` |
-| Q-09 | CMP-OVG never appears as a quoted quantity |
-| Q-10 | Exactly one platform SKU (PLT-PRO or PLT-ENT-*) on new-business quotes |
+## 3. Quote validation (Q-rules)
+**Block** means the quote is invalid and is not routed until it is fixed. **Warn** means it is routed as normal, and the warning is returned and kept on record. The test for blocking (v1.4): would this error make the ARR, the approver list, eligibility or the contract wrong? Product setup that CPQ already enforces only warns.
+
+| ID | Rule | Severity | Owner | Why |
+|---|---|---|---|---|
+| Q-01 | Start date ≥ quote date; end date = start date + term − 1 day | Block | Deal desk | Wrong dates make ARR, TCV and the contract check wrong |
+| Q-02 | Every SKU is active in the price book, and its list price equals the price book entry | Warn | CPQ | Price book setup is owned by CPQ |
+| Q-03 | PLT-PRO users in total (10 included + additional) ≤ 50 | Warn | CPQ | Product limit |
+| Q-04 | SUP-PREM can't be quoted with PLT-ENT-* | Warn | CPQ | Product bundling |
+| Q-05 | If credits are quoted, ≥ 10,000 CMP-CRED per contract year | Warn | CPQ | Minimum order size |
+| Q-06 | Account has a legal entity name, VAT ID and billing contact | Block | Deal desk | The contract can't be issued or checked (C-03) without them |
+| Q-07 | Expansion quotes co-term: end date = end date of the contract named in `amended_contract_ref` | Block | Deal desk | Breaks co-terming, partial-year ARR and the renewal date |
+| Q-08 | Academic prices only when `Academic_Verified__c = true` | Block | Deal desk | Eligibility, not price; a miss is revenue leakage |
+| Q-09 | CMP-OVG never appears as a quoted quantity | Warn | CPQ | Overage is excluded from ARR and TCV anyway |
+| Q-10 | New business: exactly one platform SKU (PLT-PRO or PLT-ENT-*). Expansion / renewal: exactly one platform SKU, or `amended_contract_ref` names an active contract on the same account (never an account-wide lookup) | Block | Deal desk | Segment (N-06) and ARR are read from the platform SKU of the quote or of the contract it amends |
+| Q-11 | Each line's net amount = applicable list × quantity × (1 − discount), within ±€0.01 | Warn | CPQ | Inconsistent CPQ data, not a price approval |
+| Q-12 | Each discounted line names who approved the discount in CPQ (`discount_approved_by`) and the CPQ approval reference (`cpq_approval_ref`) | Warn | CPQ | Shows who gave the discount at the quoting stage |
+
+Every Q-11 and Q-12 warning is kept: in the quote review result, in the batch CSV and in `records/discount_warnings.csv` (see DD-004).
 
 ## 4. Discount bands (D-rules)
 
@@ -159,9 +167,11 @@ Effective line discount = 1 − net amount ÷ (applicable list × quantity), per
 - **ARR_y (contracted ARR schedule):** the sum of net recurring amounts for contract year y, at run-rate. Partial years are annualised (× 12 ÷ months). Free months don't reduce ARR.
 - **Booked ARR (new business):** ARR_1. **Contracted step-up ARR:** ARR_y − ARR_(y−1) for y ≥ 2. It is recorded in the ARR schedule and shows in the ARR bridge as "contracted step-up" when year y starts. It is not a new booking. *(DEC-04)*
 - **Expansion booked ARR:** ARR_1 of the added lines, annualised. **Renewal ARR:** ARR_1 of the renewal contract. Change against the expiring ARR splits into uplift (price), expansion (quantity or new SKU) and contraction.
-- **ACV:** (Σ ARR_y) ÷ term in years. Average annual recurring value, without one-offs.
+- **ACV:** Σ net recurring amounts actually invoiced over the term ÷ term in years. Average annual recurring value, without one-offs. With no free months this equals (Σ ARR_y) ÷ term in years. *Changed in v1.4:* free months now reduce ACV as well as TCV.
 - **TCV:** Σ net recurring amounts actually invoiced over the term (free months deducted, partial years prorated) + Σ net one-off amounts. Overage is never included.
 - **Bonus credits (N-13) never count** in ARR, ACV or TCV: they are free and expire with the contract year.
+- **Concession value (v1.4):** free months at run-rate (net × free months ÷ 12) + bonus credits at the applicable list price for that year's credit tier. Reported on its own so the cost of give-aways is visible; never part of ARR, ACV or TCV.
+  Example: 3 years at €60,000 a year with 2 free months → ARR €60,000 each year, TCV €170,000, ACV €56,666.67, concession value €10,000.
 - **Committed credits count as recurring** (DEC-05) because they're contracted and prepaid every year. Overage and pay-as-you-go credits never count.
 - **Close date:** date of the last signature. **Booking date:** date Booking Status is set to Booked.
 
@@ -266,3 +276,4 @@ Business hours: Monday to Friday, 09:00–18:00 Europe/Madrid, excluding Spanish
 - v1.1: N-06 also triggers when non-renewal notice is under 60 days (closes a gap: shorter notice moves renewal risk to MoP). K-11 finding precision added so precision/recall scoring has a rule ID. Markdown fixes with no value change: N-01 wording now matches the JSON (> Net 30), legal-form suffix list matches the JSON.
 - v1.2: N-05 rewritten to the owner's uplift-cap policy (standard 5–7% or CPI + 2 pp, one renewal cycle, prior net price, platform and support only; below 5%, 0% hold, multi-cycle caps and caps on credit or usage rates need Deal Desk + Finance). Reason: protect renewal margin, stop multi-year price locks, keep usage pricing free to change. N-06 notice standard set by segment from the platform SKU (Pro 30–60 days, Enterprise 60–90 days), replacing the single 60-day standard. Reason: match market norms per segment.
 - v1.3: price and discount approvals moved out of scope; they are owned by CPQ at the quoting stage and the approved net price arrives with the quote. D-01 to D-04 kept as reference data, not routed. A-01 (discount chain) retired; A-04 and A-08 updated to match. N-13 bonus credits added (up to 5% Deal Desk, over 5–10% Deal Desk + Finance, above 10% or any cash rebate / usage credit-back not allowed) with contract check C-23. Reason: the deal desk approves terms, contract language, rebates and volume commitments, not price; usage-based SaaS usually rewards volume with credits rather than cash.
+- v1.4: quote validation rules get a severity. Block: Q-01, Q-06, Q-07, Q-08, Q-10. Warn: Q-02 to Q-05 and Q-09 (product setup owned by CPQ). New warnings Q-11 (line net amount vs list × quantity × discount) and Q-12 (discounted line must name who approved it in CPQ and the CPQ reference), kept on record. Reason: owner's decision (DEC-16, option C): block anything that would make the numbers, eligibility or the contract wrong; leave product setup to CPQ; keep an audit trail of discount data without approving price here. Also in v1.4: ACV now uses invoiced recurring ÷ term years, so free months reduce ACV as well as TCV (worked examples 1 and 2 are unchanged, as they have no free months), and a separate concession value records free months and bonus credits. Reason: owner's decision on how free months and bonus credits are counted. Also in v1.4: Q-07 and Q-10 bind expansions and renewals to the contract named in `amended_contract_ref` (Salesforce `Amended_Contract__c`), so an account with two active contracts or an early renewal can't pick the wrong segment; a missing, inactive or other-account contract blocks under Q-10.

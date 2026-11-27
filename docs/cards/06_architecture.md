@@ -14,7 +14,7 @@ flowchart LR
     BK[Deal Desk / Finance:<br/>clear + Book]
   end
   subgraph ENG[Deal desk engine - Python, offline]
-    R[(rules v1.3 JSON)]
+    R[(rules v1.4 JSON)]
     QE[Quote engine<br/>ARR/ACV/TCV, approvers]
     PC[Pre-check<br/>hash, template diff, regex]
     EX[LLM extraction<br/>changed clauses only<br/>Mistral default]
