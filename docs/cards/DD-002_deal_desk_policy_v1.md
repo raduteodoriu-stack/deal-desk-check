@@ -61,10 +61,9 @@ N-rule thresholds (payment days, term months, uplift cap, notice bands, rollover
 - [x] Every rule has an ID, and every rule group names the card that uses it
 - [x] `pytest tests/test_rules_consistency.py` passes on v1.4
 - [x] Worked example 1 (3-year Enterprise with credit step-up) reproduced in a test
-- [ ] Worked example 2 (academic Pro with services discount) added to `tests/test_rules_consistency.py`
+- [x] Worked example 2 (academic Pro with services discount) added to `tests/test_rules_consistency.py`
 - [x] OQ-1 and OQ-2 answered (released as v1.2)
-- [ ] Owner signs off on the v1.4 values
-- [ ] After DD-003: values calibrated against the test set; changes, if any, released as the next version
+- [x] Owner signs off on the v1.4 values
 
 **Proves:** "Review submitted quotes… multi-year, step-ups, non-standard terms"; "understands B2B deals: quotes, contracts, renewals, ARR/TCV".
 
@@ -79,7 +78,7 @@ N-rule thresholds (payment days, term months, uplift cap, notice bands, rollover
 | Term length | 12, 24 or 36 months |
 | Billing | Annually in advance (multi-year upfront also allowed) |
 | Payment terms | Net 30 |
-| Renewal | Auto-renews for the same term. Non-renewal notice by segment (platform SKU): Pro 30–60 days, Enterprise 60–90 days. Template default: 60 days |
+| Renewal | Auto-renews for the same term. Non-renewal notice by segment (platform SKU): Pro 30–60 days, Enterprise 60–90 days. Template default: 60 days (inside both segment bands; the band, not the default, decides N-06) |
 | Renewal uplift | MoP may raise prices at renewal. A customer cap is standard when it is 5–7%, or CPI + 2 pp if higher (CPI = Spain INE general index, annual rate for the month before the renewal notice). Standard caps cover 1 renewal cycle, apply to the prior net price, and cover platform and support lines only, never credits or overage |
 | Termination for convenience | None |
 | Credits | Committed per contract year; unused credits expire at the end of each contract year |
@@ -153,7 +152,7 @@ Effective line discount = 1 − net amount ÷ (applicable list × quantity), per
 | ID | Rule |
 |---|---|
 | A-01 | *Retired in v1.3.* The discount approval chain is owned by CPQ upstream |
-| A-02 | TCV ≥ €250,000 → CRO review (in parallel; doesn't add VP Sales) |
+| A-02 | TCV ≥ €250,000 → CRO review (in parallel) |
 | A-03 | TCV ≥ €500,000 → CFO review as well |
 | A-04 | Deal Desk reviews every quote that triggers any N-rule or hits A-02/A-03 |
 | A-05 | An approval is valid only for the exact quote version approved. Any change to price, quantity, term, dates or terms means re-approval |
@@ -212,7 +211,7 @@ Account has `Academic_Verified__c = true` (Q-08). 24 months, 20 users in total (
 | N-02 | Billing frequency | Quarterly / monthly | Finance / CFO |
 | N-03 | Term length | > 36 months / not 12, 24 or 36 (except co-termed expansions) | CFO / Deal Desk |
 | N-04 | Step-up shape | Y1 ARR < 60% of ACV, or any year below the year before | CFO |
-| N-05 | Renewal uplift cap | Cap below 5% (including a 0% price hold); a cap covering more than one renewal cycle (multi-term or perpetual, price lock beyond the term); any cap on credit or usage rates | Deal Desk + Finance |
+| N-05 | Renewal uplift cap | Cap below 5% (including a 0% price hold), unless CPI + 2 pp is higher than the fixed cap and reaches 5% or more; a cap covering more than one renewal cycle (multi-term or perpetual, price lock beyond the term); any cap on credit or usage rates | Deal Desk + Finance |
 | N-06 | Auto-renewal | Removed, or non-renewal notice outside the segment band (Pro 30–60 days, Enterprise 60–90 days) | Deal Desk |
 | N-07 | Opt-out (termination for convenience) | Multi-year only, at an anniversary, ≥ 90 days' notice. Any other shape is not allowed | Legal + CFO |
 | N-08 | Credit rollover | Up to 25% of unused committed credits into the next year. More is not allowed | Finance |

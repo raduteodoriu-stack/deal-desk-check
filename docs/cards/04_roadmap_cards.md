@@ -100,7 +100,7 @@ Coverage: 12 C-rules as primary (C-03, C-05, C-08, C-09, C-11, C-13, C-14, C-15,
 - `quote.json`: quote_number, version, quote_date, start_date, end_date, term_months, currency, deal_type (new / expansion / renewal), account_ref, payment_terms_days, billing_frequency, amended_contract_ref (expansions and renewals), non_standard_terms (the N-rule terms in their DD-002 shape), lines[] (sku, contract_year, quantity, list_price, applicable_list, discount_pct, net_amount, discount_approved_by, cpq_approval_ref), approvals[] (role, status, quote_version, approved_on). Money as strings.
 - `opportunity.json`: opportunity_ref, stage, close_date, quote_ref, booked_arr, acv, tcv, term_months, arr_schedule[].
 - `account.json`: account_ref, legal_name, vat_id, country, billing_contact (name, email), academic_verified, contracts[] (contract_ref, platform_sku, start_date, end_date, status: Draft / Active / Expired).
-- `contract_spec.json`: deal_id, template_version, clause_variants {clause_id: variant_id}, slot_values (what the contract states), planted_error {rule, field, quote_value, contract_value, description} or null.
+- `contract_spec.json`: deal_id, template_version, clause_variants {clause_id: variant_id}, slot_values (what the contract states), planted_error {rule, type (slot_value / clause_removed / clause_text / page_removed / injection), clause_id, field, quote_value, contract_value, text (replacement wording for clause_text and injection), description} or null. The DD-006 generator applies it exactly as written.
 
 **Answer key columns** (`tests/answer_keys.csv`)
 deal_id, rules_version, segment, expected_outcome, primary_rule, expected_failed_rules (primary + derived, `;`-separated), expected_catching_stage, expected_approvers (role: rule reason, in the fixed role order), expected_booked_arr, expected_acv, expected_tcv, expected_concession_value, expected_arr_schedule, notes.
@@ -121,6 +121,7 @@ deal_id, rules_version, segment, expected_outcome, primary_rule, expected_failed
 - [ ] Every JSON file is valid and uses strings for money; every planted error is recorded in its `contract_spec.json`
 - [ ] Synthetic identities only: VAT IDs fail the official checksum; no real organisation or person names
 - [ ] Owner reviews and signs off in `tests/SIGNOFF.md` before DD-004 starts
+- [ ] Rules values calibrated against the test set; any change released as the next rules version with a change-log reason (moved from DD-002)
 
 **Est. days:** 1.5 (was 1; the 15 quote-only cases are new).
 **Proves:** "You notice when numbers don't reconcile"; "check every closed-won deal against the signed contract before it's booked".
@@ -228,16 +229,114 @@ Money is returned as strings so no float ever touches it.
 **Proves:** "Review submitted quotes… multi-year, step-ups, non-standard terms"; "keep approvals moving"; "understands B2B deals: ARR/TCV".
 
 ## DD-006 — Standard contract, clause playbook, contract generator
-**Purpose:** give the checker a fixed standard to compare against, and give reviewers a written playbook of what is allowed.
-**Story:** most contracts are the standard agreement with the deal's numbers filled in. If every clause has a stable ID and every allowed variant is written down, code can recognise almost everything without an LLM.
-**Decisions:** plain text with page markers; no PDF in the MVP. Planted errors come only from the answer key.
+**Purpose:** give the contract check a fixed standard to compare against, write down which clause wordings are allowed and who approves them, and turn every DD-003 deal into a signed-contract text with its planted error, the same way every time.
+
+**Story:** most contracts are the standard agreement with the deal's numbers filled in. Reviewers lose time re-reading boilerplate to find the one clause a customer changed. If every clause has a stable ID, and every allowed variant is written down with the rule that approves it, code can tell "standard", "known variant" and "changed" apart without reading the text. That leaves only the changed clauses for a person or the LLM. The generator gives us realistic contracts to test this on, with no real customer documents.
+
+**Key idea:** a different *value* is a slot, and a different *wording* is a variant. Net 45 instead of Net 30 uses the standard payment clause with `{{payment_days}} = 45`. The clause hash still matches the standard, and the comparator checks the value (C-11). Only a change in wording, such as an opt-out clause or an uplift cap that also covers credits, needs a playbook variant or goes to review.
+
+**Decisions** (recommended option first)
+| # | Topic | Options | Recommendation | Example |
+|---|---|---|---|---|
+| 1 | Contract format | **A. Plain text with page markers** / B. Markdown / C. Generated PDF | **A.** Every later stage reads text. A PDF adds a text-layer step and a library for no extra check in the MVP. PDF is a post-MVP add-on | `--- Page 3 of 6 ---` between pages; DL-14 drops page 4, so the sequence reads 3, 5 |
+| 2 | How clauses are identified | **A. Clause-library ID in each heading** / B. Section numbers mapped to IDs in a side file / C. No IDs, split by headings | **A.** It's how CLM tools tag clauses from a clause library. It survives renumbering and makes DD-014's split exact. B breaks when a customer renumbers. C is guesswork | `8.2 Renewal price increase [CL-UPL-01]` |
+| 3 | Slots (numbers, dates, names) | **A. One fixed format per slot type** / B. Formats vary per deal | **A.** Regex in DD-014 has fixed anchors. B is realistic but turns DD-014 into a parsing project. Varied formats are a post-MVP test | Dates `1 March 2027`; money `€51,000.00`; days `45 days`; percent `6%` |
+| 4 | Variant model | **A. Fixed variant wording with slots, matched by hash** / B. Each variant as a regex pattern / C. Only the standard, everything else goes to the LLM | **A.** A clean or approved clause costs zero LLM calls and gives the same answer every run. B is fragile to maintain. C sends approved exceptions to the LLM for nothing | N-07 approved opt-out is variant `CL-OPT-01.v1` ("may terminate at the {{opt_out_month}}-month anniversary with {{opt_out_notice_days}} days' notice"); any other opt-out wording is `changed` |
+| 5 | Contract language | **A. English, with ES / PT / FR governing-law variants** / B. Each customer's language | **A.** One template and one playbook. The customer's country shows in governing law (N-11) and VAT ID format. Translations are post-MVP | DL-15 uses `CL-LAW-01.pt` ("governed by the laws of Portugal"), approved under N-11 |
+
+**Also fixed (no options needed)**
+| Topic | Decided |
+|---|---|
+| Source of truth | `contracts/playbook_v1.json`. `playbook_v1.md` is rendered from it by a script, and a test fails if they differ (same rule as the rules JSON) |
+| Planted errors | Only from `contract_spec.json` (DD-003). The generator never invents an error. Five types: `slot_value`, `clause_removed`, `clause_text` (rewritten wording supplied in the spec), `page_removed`, `injection` |
+| Determinism | Same template version + same spec → byte-identical `contract.txt`. Fixed page length (55 lines), no timestamps in the body |
+| Signatures | Text block with signatory name, title and date per party. "Signed" = name and date present (C-01) |
+| Synthetic marker | First line of every contract: `FICTIONAL SAMPLE: MoP Cloud test agreement, not a real contract` |
+| Length | About 6 pages, 18 clauses: long enough for page tests (DL-14), short enough to write in a day |
+
+**Clause catalogue (template v1)**
+| Clause ID | Heading | Slots | Allowed variants (rule that approves them) | Checked by |
+|---|---|---|---|---|
+| CL-PTY-01 | Parties | customer legal name, VAT ID, address | — | C-02, C-03 |
+| CL-REF-01 | Order reference | quote number, version | — | C-18 |
+| CL-TRM-01 | Term | start date, end date, term months | — | C-05, C-06 |
+| CL-ORD-01 | Order form (line items) | table: SKU, year, quantity, net amount | — | C-07, C-08, C-09 |
+| CL-CUR-01 | Currency | currency | — | C-04 |
+| CL-PAY-01 | Payment terms | payment days | — (any value is a slot; N-01 approves the value) | C-11 |
+| CL-BIL-01 | Invoicing | billing frequency | — (N-02 approves the value) | C-12 |
+| CL-REN-01 | Auto-renewal and notice | notice days | `.none` no auto-renewal (Deal Desk) | C-13 |
+| CL-UPL-01 | Renewal price increase | cap %, basis | `.multi` multi-cycle cap, `.hold` 0% hold (N-05, Deal Desk + Finance) | C-14 |
+| CL-OPT-01 | Early termination | — | absent by default; `.v1` anniversary opt-out (N-07, Legal + CFO) | C-15 |
+| CL-CRD-01 | Compute credits | credits per year, rollover % | `.rollover` (N-08, Finance) | C-09, C-16 |
+| CL-BON-01 | Bonus credits | bonus credits per year | absent by default; `.v1` expiring with the contract year (N-13) | C-23 |
+| CL-OVG-01 | Overage | overage rate | — | C-14 (no cap on usage) |
+| CL-LIA-01 | Limitation of liability | cap months | — (any wording change goes to Legal) | C-17 |
+| CL-LAW-01 | Governing law | — | `.es` (standard), `.pt`, `.fr` (N-11, Legal) | C-17 |
+| CL-DPA-01 | Data protection | — | — | C-17 |
+| CL-GEN-01 | General (entire agreement, notices) | — | — | C-17 |
+| CL-SIG-01 | Signatures | names, titles, dates | — | C-01, C-22 |
+
+**What this card delivers**
+| # | Deliverable | Where | What it does |
+|---|---|---|---|
+| 1 | Standard template | `contracts/template/standard_v1.txt` | The MoP Cloud subscription agreement: 18 clauses, each heading tagged with its clause ID, slots as `{{name}}` |
+| 2 | Template manifest | `contracts/template/standard_v1.json` | Clause order, required or optional, slot names and types, and the hash of each standard body with slots masked (DD-014 reads this) |
+| 3 | Clause playbook | `contracts/playbook_v1.json` (source) + `playbook_v1.md` (rendered) | Per clause: standard wording, allowed variants with the N-rule and approver, forbidden examples with the C-rule they break, reviewer guidance in one line |
+| 4 | Generator | `dealdesk/contracts/generate.py` | `python -m dealdesk.contracts.generate tests/deals/DL-01` writes `contract.txt` and `contract_manifest.json`; `--all` does every deal |
+| 5 | Playbook renderer | `dealdesk/contracts/render_playbook.py` | Rebuilds `playbook_v1.md` from the JSON |
+| 6 | Tests | `tests/test_contract_generator.py` | Below |
+
+**Playbook entry (example)**
+```json
+{
+  "clause_id": "CL-UPL-01",
+  "heading": "Renewal price increase",
+  "standard": "On the first renewal, MoP Cloud may increase the Platform and Support fees by no more than {{uplift_cap_pct}}% or Spanish CPI (INE) plus 2 percentage points, whichever is greater, applied to the net fees of the expiring term. This cap does not apply to Compute Credits or usage.",
+  "slots": {"uplift_cap_pct": "percent, standard 5-7"},
+  "allowed_variants": [
+    {"id": "CL-UPL-01.multi", "rule": "N-05", "approvers": ["Deal Desk", "Finance"], "wording": "... on each renewal during the {{uplift_cap_cycles}} renewal terms following ..."}
+  ],
+  "forbidden": [
+    {"example": "cap extended to Compute Credit rates or usage", "breaks": "C-14"},
+    {"example": "cap with no limit on renewal cycles", "breaks": "C-14"}
+  ],
+  "reviewer_note": "Only platform and support fees may be capped. Any mention of credits or usage in this clause is a BLOCK."
+}
+```
+
+**Generated contract (excerpt, DL-10, planted error)**
+```
+--- Page 4 of 6 ---
+8.2 Renewal price increase [CL-UPL-01]
+On the first renewal, MoP Cloud may increase the fees for all Services,
+including Compute Credit rates, by no more than 6% or Spanish CPI (INE)
+plus 2 percentage points, whichever is greater, ...
+```
+DD-014 sees the hash differ from both the standard and every allowed variant, so it marks the clause `changed` and stores the word diff ("Platform and Support fees" → "fees for all Services, including Compute Credit rates"). DD-007 reads only this clause, and DD-008 returns C-14 BLOCK.
+
+**How it works (per deal)**
+1. Read `contract_spec.json`, `quote.json` and `account.json`.
+2. Pick each clause's variant (standard unless the spec names one), in template order; skip optional clauses that are absent.
+3. Fill slots from `slot_values` in the fixed formats.
+4. Apply the planted error, if any, exactly as the spec describes.
+5. Lay out pages (55 lines each), add `Page x of y` markers, then drop a page if the error type is `page_removed`.
+6. Write `contract.txt` and `contract_manifest.json` (template version, variant per clause, clause hashes, page count, planted error applied).
+
+**Change to DD-003's format:** `planted_error` gains `type` (the five types above) and `clause_id`, and `clause_text` errors carry the replacement wording in `text`. No answer-key values change.
+
 **Acceptance criteria**
-- [ ] `contracts/template/standard_v1.md`: the standard MoP Cloud subscription agreement, every clause tagged with a stable clause ID (e.g. `[CL-PAY-01]`)
-- [ ] `contracts/playbook_v1.md` + `contracts/playbook_v1.json`: for each clause, the standard wording, allowed variants (with the N-rule that approves them), forbidden variants, and the C-rule it maps to
-- [ ] Number and date slots in the template (`{{start_date}}`, `{{line_items}}`) so regex extraction has fixed anchors
-- [ ] Generator turns each DD-003 deal into `contract.txt` from the template and playbook variants
-- [ ] "Page x of y" markers in every generated contract
-- [ ] Synthetic names, VAT IDs and signatories only
+- [ ] `standard_v1.txt` has 18 clauses, each heading carrying exactly one clause ID; `standard_v1.json` lists every clause, its slots and its masked-body hash
+- [ ] `playbook_v1.json` covers every clause; every allowed variant names its N-rule and approvers; every forbidden example names the C-rule it breaks; C-11 to C-17 and C-23 each appear at least once
+- [ ] `playbook_v1.md` is rendered from the JSON, and a test fails if they differ
+- [ ] The generator produces `contract.txt` for all 15 DD-003 deals; running it twice gives byte-identical files
+- [ ] On the 3 clean deals, every clause hash equals the standard or an allowed variant (proves DD-014 can pass them with zero LLM calls)
+- [ ] On each of the 12 error deals, rendering with and without the planted error differs only in the clause or page the spec names
+- [ ] Every contract has `Page x of y` markers; DL-14 is missing page 4 of 6; DL-15 contains the injection sentence inside a clause
+- [ ] First line marks every contract as a fictional sample; names, VAT IDs and signatories come only from DD-003's synthetic data
+- [ ] `pytest -q` passes offline
+
+**Est. days:** 1 (template and playbook about half a day, generator and tests the other half).
+**Proves:** "check every closed-won deal against the signed contract before it's booked"; "non-standard terms"; documenting a playbook so approvals are predictable.
 
 ## DD-014 — Deterministic pre-check: hash, diff, regex
 **Purpose:** decide as much as possible without an LLM. Only clauses that differ from the template, or that the playbook doesn't recognise, go to the LLM.

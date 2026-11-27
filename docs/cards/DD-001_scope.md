@@ -16,7 +16,7 @@ The deal desk fixes these with one written policy, an approval path the system w
 | # | Deliverable | Where | What it contains |
 |---|---|---|---|
 | 1 | Scope statement | This card: In scope / Out of scope | The MVP boundary and the deferred list, so every later card can be checked against it |
-| 2 | Decision log | This card: Decisions | DEC-01 to DEC-14 with the option chosen and why. New decisions get the next DEC number here |
+| 2 | Decision log | This card: Decisions | DEC-01 to DEC-18 with the option chosen and why. New decisions get the next DEC number here |
 | 3 | Stakeholder map and RACI | This card: Stakeholders, RACI | Who needs what, and who is Responsible / Accountable / Consulted / Informed at each step |
 | 4 | To-be process map | This card: Process map | The quote-to-booking flow the MVP implements, with the system steps and the human steps |
 | 5 | Glossary | This card: Glossary | Each term links to its definition in DD-002, so there is one definition per term |
@@ -132,7 +132,8 @@ One definition per term, kept in DD-002. This list only points to it.
 | ARR_y / contracted ARR schedule | Net recurring amount for contract year y, at run-rate | DD-002 §6 |
 | Booked ARR | ARR_1 for new business; ARR_1 of added lines for expansions | DD-002 §6 |
 | Contracted step-up | ARR_y − ARR_(y−1); recorded in the schedule, not a new booking | DD-002 §6 |
-| ACV | Average of ARR_y over the term, one-offs excluded | DD-002 §6 |
+| ACV | Recurring amount actually invoiced over the term ÷ term years; one-offs excluded (v1.4) | DD-002 §6 |
+| Concession value | Free months at run-rate plus bonus credits at applicable list; reported, never in ARR/ACV/TCV | DD-002 §6 |
 | TCV | Net recurring actually invoiced over the term plus one-offs; overage excluded | DD-002 §6 |
 | Applicable list | List price after credit tier or academic price, before discount | DD-002 §2 |
 | Booking / booking date | Booking Status set to Booked by a named person / the date that happens | DD-002 §6 |
@@ -174,13 +175,13 @@ Measured on the synthetic test set. These are not claims about real impact.
 
 ## Acceptance criteria
 - [x] Scope, out of scope and stakeholders agreed
-- [x] DEC-01 to DEC-14 decided and recorded here
+- [x] DEC-01 to DEC-18 decided and recorded here
 - [x] RACI reviewed and agreed by the owner (Finance books and owns the booking; Deal Desk clears)
 - [ ] To-be process map reviewed; it matches the DD-005 Flows and the DD-008 outcomes
-- [ ] Glossary terms link to DD-002, with no second definition anywhere else
+- [x] Glossary terms link to DD-002, with no second definition anywhere else
 - [x] Data protection note reviewed (30-day LLM log retention agreed for now)
-- [ ] Definition of done agreed and copied into the PR template checklist
-- [ ] Repo `deal-desk-check` created on GitHub with this card as `docs/cards/DD-001_scope.md`
+- [x] Definition of done agreed and copied into the PR template checklist
+- [x] Repo `deal-desk-check` created on GitHub with this card as `docs/cards/DD-001_scope.md`
 - [ ] GitHub Project board created with one issue per card (`tools/github/setup_project.sh`)
 
 **Proves:** "Has redesigned at least one commercial process end to end… mapped it, documented it" and "keep runbooks, process maps and the tool inventory up to date".

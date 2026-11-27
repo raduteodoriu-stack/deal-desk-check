@@ -126,3 +126,29 @@ def test_quote_validation_severity(rules):
     assert set(sev.values()) <= {"block", "warn"}, sev
     assert {i for i, s in sev.items() if s == "block"} == {"Q-01", "Q-06", "Q-07", "Q-08", "Q-10"}
     assert sev["Q-11"] == "warn" and sev["Q-12"] == "warn"
+
+
+def _price(rules: dict, sku: str) -> Decimal:
+    return Decimal(next(p for p in rules["price_book"] if p["sku"] == sku)["list_price"])
+
+
+def test_worked_example_2_reproducible(rules):
+    """DD-002 section 6: 2-year academic Pro deal with a services discount."""
+    factor = Decimal(rules["academic"]["price_factor"])
+    disc = Decimal("0.88")  # 12% platform and support discount, approved in CPQ
+    platform = (_price(rules, "PLT-PRO") * factor * disc
+                + 10 * _price(rules, "PLT-PRO-USER") * factor * disc
+                + _price(rules, "SUP-PREM") * factor * disc)
+    assert platform == Decimal("12672")
+    credits = 30_000 * _tier_price(rules, 30_000)  # tier 0%, no academic price on credits
+    arr = platform + credits
+    training = 2 * _price(rules, "SVC-TRN") * Decimal("0.90")
+
+    assert arr == Decimal("42672")
+    acv = (arr * 2) / 2
+    assert acv == Decimal("42672")
+    tcv = arr * 2 + training
+    assert tcv == Decimal("88944")
+
+    a02 = next(a for a in rules["approval_rules"] if a["id"] == "A-02")
+    assert tcv < Decimal(a02["tcv_threshold"])  # no deal-size review

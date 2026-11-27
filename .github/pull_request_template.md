@@ -14,6 +14,10 @@ Closes #<!-- issue number --> · DD-0xx
 ## Change note
 <!-- Why this change, which business outcome it serves, and which job-description bullet it proves -->
 
-## Checklist
-- [ ] Card checklist and issue checklist updated
-- [ ] No secrets, tokens or real customer data
+## Definition of done (DD-001)
+- [ ] Every acceptance criterion on the card is ticked, and the issue checklist matches
+- [ ] `pytest -q` passes; any answer-key change is explained in `tests/CHANGES.md`
+- [ ] No rule value changed without a new rules version and a change-log entry
+- [ ] This PR names the card and closes its issue (`Closes #…` above)
+- [ ] README status table updated
+- [ ] No secrets, tokens or real customer or personal data
