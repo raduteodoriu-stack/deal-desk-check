@@ -737,42 +737,136 @@ The `<…>` values come from the DD-003 hand workings; they aren't invented here
 **Proves:** "check every closed-won deal against the signed contract before it's booked"; "you notice when numbers don't reconcile"; decisions Finance can audit, with evidence for every finding.
 
 ## DD-005 — Salesforce thin slice (Developer Edition)
-**Purpose:** show both jobs live in a standard Sales Cloud org with no code. Discounts route to the right approvers, and a deal can't be booked until its contract check passes or a named person clears it with a reason.
-**Story:** the deal desk engine runs offline. Salesforce holds the price book, runs the approvals and enforces the gate. Checker results arrive by CSV import, so there is no API integration to build or secure in the MVP.
-**Decisions:** standard Quotes, not CPQ. The gate is on Booking Status, not Stage (DEC-10). Validation rules and Flow are used instead of Apex because they are native, admin-maintainable and auditable.
+**Purpose:** show both jobs running in a standard Sales Cloud org with no code. Non-standard terms and large deals go to the right approvers, all at once, and a deal can't be booked until its contract check passes or Deal Desk clears it with a reason.
+
+**Story:** the deal desk engine runs offline. Salesforce holds the price book and the approved terms, runs the approvals and enforces the booking gate. DD-008 results come in by a scripted CSV upsert, so there is no API integration to build or secure in the MVP (that is DD-009). Everything is configuration an admin can read and change: fields, validation rules, Flows, Approval Processes and Custom Metadata.
+
+**Already decided:** standard Quotes, not CPQ (price and discount approvals happen upstream, DEC-15). The gate is on Booking Status, not Stage (DEC-10). Validation rules and Flows, not Apex. Finance books; Deal Desk clears (DD-001 RACI).
+
+**Decisions** (each with options, trade-offs and a recommendation)
+
+**1. How approvals run in parallel (the rules say all approvers are parallel)**
+| Option | How it works | Trade-offs |
+|---|---|---|
+| A. One classic Approval Process on Quote, one step per role in fixed order, each step entered only if `Required_Approvers__c` names that role | Standard, well documented, Approval History on the quote | Steps run **one after another**, which contradicts the rules (all approvers parallel, A-02 "in parallel") and adds up the A-08 targets. Would need a written deviation |
+| **B. One `Quote_Approval__c` child record per required role, created by the Quote Flow; each has a one-step Approval Process assigned to that role's queue; a Flow marks the quote Approved when every child is approved, Rejected if any is rejected (recommended)** | Approvals start at the same time | Matches the rules exactly. Each role's own approval time is recorded, so A-08 targets can be measured per approver. A-05 resets are easy: supersede the children and create new ones. About half a day more build than A |
+| C. Salesforce's newer Flow-based approvals | Approvals designed inside Flow Builder | Possibly parallel out of the box, but newer, with fewer examples, and availability in Developer Edition must be checked at build time. Not worth the risk for the MVP |
+
+*Example (DL-01, worked example 1: Deal Desk, CRO, CFO):* with A, Deal Desk (target 1 business day) then CFO (2) then CRO (2) can take up to 5 business days. With B, three `Quote_Approval__c` records are created together and the quote can be approved in 2 business days, the longest single target.
+
+**2. How DD-008 results get into Salesforce**
+| Option | Trade-offs |
+|---|---|
+| **A. Salesforce CLI bulk upsert, one command per file, matching on the External IDs from DD-008 (recommended)** | Scriptable and repeatable: the same command every time, written in the runbook, so re-runs update instead of duplicating. Same CLI used to retrieve the metadata. You run it yourself in VS Code |
+| B. Data Loader (desktop app) | Familiar admin tool with a field-mapping screen, but mappings are clicked each time (or saved files), and it needs a Java install on the Mac |
+| C. Data Import Wizard (in the browser) | Nothing to install, but less control over linking child rows to parents by External ID; check at build time if chosen |
+
+*Example:* `sf data upsert bulk --sobject Contract_Check__c --file out/contract_checks.csv --external-id Check_Key__c --wait 10`, then the same for `Contract_Check_Finding__c` with `Finding_Key__c`. The findings file links to its check through the column `Contract_Check__r.Check_Key__c`.
+*Knock-on if approved:* add `Deal_Id__c` (External ID, unique, e.g. `DL-08`) on Opportunity, so the checks file links by `Opportunity__r.Deal_Id__c` instead of a Salesforce record ID that changes per org. The DD-008 CSV header changes to match.
+
+**3. What happens at Closed Won**
+| Option | Trade-offs |
+|---|---|
+| **A. The Opportunity Flow only sets `Booking_Status__c = Checking`; the check record is created by the import (recommended)** | One check record per real run, no empty records, and the import stays the single writer of check results |
+| B. Create a placeholder `Contract_Check__c` and let the import update it | Shows a "pending" record at once, but the placeholder needs a key the checker must reproduce, or the import creates a second record next to it |
+| C. Create a placeholder and delete it on import | Clean in the end, but adds a delete step and a Flow that can fail halfway |
+
+*Example:* DL-08 goes Closed Won → status `Checking`. The import creates `DL-08-R001` with BLOCK; the Flow sets it latest and the status to `Blocked`. After the AE fixes the contract, run `R002` is imported as PASS, `R001` is unticked as latest, and the status becomes `Ready to Book`.
+
+**4. Who can clear a REVIEW or BLOCK**
+| Option | Trade-offs |
+|---|---|
+| **A. Deal Desk only, through a custom permission `Clear_Contract_Check`; never the Opportunity owner; a reason code is always required, and Finance sees the clearance before booking (recommended)** | Matches the signed-off RACI (Deal Desk R/A for clearing, Finance R/A for booking), so a cleared BLOCK still passes a second pair of eyes at booking. The validation rule names the permission, not a profile, so it's easy to audit |
+| B. A BLOCK needs both Deal Desk and Finance to clear | A stronger two-person rule, but it changes the RACI and adds a wait to every cleared BLOCK |
+| C. Anyone with edit access | Simplest, and makes the gate meaningless |
+
+*Example:* DL-12 is REVIEW (C-17, uncapped liability). Legal confirms the clause was agreed; Deal Desk clears with `approved_post_signature` and the Legal confirmation in `Clear_Reason__c`. An AE trying the same is stopped by the validation rule.
+
+**5. How rule thresholds reach Salesforce**
+| Option | Trade-offs |
+|---|---|
+| **A. A small script turns the rules JSON into Custom Metadata records (`Deal_Desk_Rule__mdt`), deployed with the CLI; the Flow reads them (recommended)** | The JSON stays the only source (the project rule "JSON wins"). A rules change is one regenerate-and-deploy, and the deployed file shows the rules version |
+| B. Type the Custom Metadata records in Setup, and check them with a parity test | No script, but values are typed twice, and drift is found only when the test runs |
+| C. Type thresholds into the Flow | Fastest to build, hard to audit, and every rules change means editing a Flow |
+
+*Example:* A-02 in the JSON (`tcv_threshold: 250000.00`, approver CRO) becomes the record `Deal_Desk_Rule.A_02` with `Threshold__c = 250000`, `Approver__c = CRO`, `Rules_Version__c = 1.4`.
+
+**6. How the Flow is proved to route like DD-004 (parity test)**
+| Option | Trade-offs |
+|---|---|
+| **A. Query the quotes' `Required_Approvers__c` with the CLI into a CSV, and a script compares it with the DD-004 output for every DD-003 quote (recommended)** | Repeatable in seconds after any change, and the result goes in the test report |
+| B. Compare by hand in the manual test script | No script, but slow, and easy to skip after a change |
+| C. No parity test | Two routing engines that may quietly disagree |
+
+*Example:* for DL-01 the Flow gives `Deal Desk;CRO;CFO`, DD-004 gives Deal Desk, CFO, CRO. Compared as sets → match. Any difference is listed with the quote ID.
+
+**Also fixed (no options needed)**
+| Topic | Decided |
+|---|---|
+| Gate | Validation rule on Opportunity: `Booking_Status__c` can change to Booked only if `Latest_Check_Outcome__c` = PASS or `Latest_Check_Cleared__c` is true, and only by a user with the `Book_Deal` custom permission (Finance) |
+| Latest check | The Contract_Check__c Flow copies the latest outcome and clearance to the Opportunity, because a validation rule can't read child records |
+| Statuses | PASS → Ready to Book, REVIEW → Review, BLOCK → Blocked; a later clearance → Ready to Book |
+| A-05 | A change to price, quantity, term or dates on an approved quote supersedes its `Quote_Approval__c` records and creates new ones |
+| A-06 | An approver can't approve a quote they own (entry criteria on each child's Approval Process) |
+| A-07 | Approval expires with the quote's `ExpirationDate` (quote validity 30 days) |
+| Security flag | A finding with C-21 sets `Security_Flag__c` on the check, shown on the page layout |
+| History | Field history tracking on `Booking_Status__c`, clearance fields and `Quote_Approval__c.Status__c` |
+| Data | Synthetic DD-003 data only, in a Developer Edition org; no real customer data |
+| Credentials | Org login through the Salesforce CLI's browser login; nothing stored in the repo |
+
+**What this card delivers**
+| # | Deliverable | Where |
+|---|---|---|
+| 1 | Org metadata (objects, fields, layouts, validation rules, Flows, Approval Processes, permission sets, custom permissions, Custom Metadata) | `salesforce/force-app/` (retrieved with the CLI) |
+| 2 | Rules-to-metadata script | `tools/sf/rules_to_cmdt.py` → `salesforce/force-app/main/default/customMetadata/` |
+| 3 | Load commands and CSVs | `tools/sf/load_test_data.md`, `tools/sf/import_checks.md` |
+| 4 | Parity script | `tools/sf/parity_check.py` → section in `docs/test_report.md` |
+| 5 | Manual test script with screenshots | `docs/sf_test_script.md` |
+| 6 | Setup README for anything not retrieved | `salesforce/README.md` |
+
+**Walkthrough (DL-08, Net 60 in the contract, Net 30 approved)**
+1. AE builds the quote with Net 30. No N-rule triggered, so no `Quote_Approval__c` records; the quote is approved without review.
+2. Signed; AE sets Closed Won with close date = last signature date → `Booking_Status__c = Checking`.
+3. Offline: pre-check → comparator → `contract_checks.csv` and `contract_check_findings.csv`.
+4. Two CLI upserts → `DL-08-R001` BLOCK with one finding (C-11, expected 30, found 60) → status Blocked.
+5. Finance tries to set Booked → the validation rule stops it. Deal Desk sends it back; the contract is corrected; `R002` PASS → Ready to Book → Finance books.
 
 **A. Booking gate**
-- [ ] Opportunity fields: `Booking_Status__c` (Not Ready, Checking, Review, Blocked, Ready to Book, Booked), `Booked_ARR__c`, `ACV__c`, `TCV__c`, `Concession_Value__c`, `Term_Months__c`, `Booking_Date__c`
-- [ ] Custom object `Contract_Check__c` (lookup to Opportunity): `Check_Key__c` (External ID, unique; deal ID + run ID, DD-008), `Outcome__c` (PASS / REVIEW / BLOCK), `Failed_Rules__c`, `Rules_Version__c`, `Run_At__c`, `Is_Latest__c`, `Cleared_By__c` (User), `Cleared_At__c`, `Clear_Reason_Code__c` (the 5 DD-002 override codes), `Clear_Reason__c`
-- [ ] Child object `Contract_Check_Finding__c` (master-detail): `Finding_Key__c` (External ID, unique; check key + rule + item, DD-008), `Rule__c`, `Severity__c`, `Expected__c`, `Found__c`, `Evidence__c`
+- [ ] Opportunity fields: `Deal_Id__c` (External ID, unique), `Booking_Status__c` (Not Ready, Checking, Review, Blocked, Ready to Book, Booked), `Booked_ARR__c`, `ACV__c`, `TCV__c`, `Concession_Value__c`, `Term_Months__c`, `Booking_Date__c`
+- [ ] Custom object `Contract_Check__c` (lookup to Opportunity): `Check_Key__c` (External ID, unique; deal ID + run ID, DD-008), `Outcome__c` (PASS / REVIEW / BLOCK), `Failed_Rules__c`, `Rules_Version__c`, `Run_At__c`, `Is_Latest__c`, `Security_Flag__c`, `Cleared_By__c` (User), `Cleared_At__c`, `Clear_Reason_Code__c` (the 5 DD-002 override codes), `Clear_Reason__c`
+- [ ] Child object `Contract_Check_Finding__c` (master-detail): `Finding_Key__c` (External ID, unique; check key + rule + item, DD-008), `Rule__c`, `Severity__c`, `Expected__c`, `Found__c`, `Evidence__c`, `Follows_From__c`
 - [ ] Opportunity fields for the latest check (`Latest_Check_Outcome__c`, `Latest_Check_Cleared__c`), set by the Flow in C
-- [ ] Validation rule on Contract_Check__c: a clearance needs Cleared_By, Cleared_At and Reason Code; code `other` needs Clear_Reason__c text
-- [ ] Validation rule on Opportunity: Booking_Status__c can't be Booked unless the latest check is PASS or was cleared with a logged reason
+- [ ] Validation rule on Contract_Check__c: a clearance needs the `Clear_Contract_Check` permission, Cleared_By, Cleared_At and a Reason Code; code `other` needs Clear_Reason__c text; the Opportunity owner can't clear
+- [ ] Validation rule on Opportunity: Booked only if the latest check is PASS or cleared, and only with the `Book_Deal` permission
 - [ ] Field history tracking on Booking_Status__c and the clearance fields
-- [ ] CSV import of DD-008 results (Data Import Wizard or Data Loader) for the DD-003 deals
-- [ ] Permission sets: AE, Sales Manager, Deal Desk, Finance; only Deal Desk and Finance can clear checks or set Booked
+- [ ] DD-008 results loaded with the two CLI upserts for all 15 DD-003 deals; running the same import twice creates no duplicates
+- [ ] Permission sets: AE, Sales Manager, Deal Desk (`Clear_Contract_Check`), Finance (`Book_Deal`), Legal
 
 **B. Price book and non-standard terms approval**
 - [ ] Quotes enabled; Product2 for every price-book SKU (P-01 to P-11); Pricebooks "MoP Standard" and "MoP Academic" (P-12)
 - [ ] CMP-CRED has one PricebookEntry at €1.00; the tier price is stored on the line as `Applicable_List__c` (standard price books have no volume tiers)
-- [ ] QuoteLineItem fields: `Contract_Year__c`, `Applicable_List__c`, `Rule_Family__c` (discount fields stay as data; price approval is upstream in CPQ)
-- [ ] Quote fields for the N-rule terms: `Payment_Terms_Days__c`, `Billing_Frequency__c`, `Auto_Renewal__c`, `Non_Renewal_Notice_Days__c`, `Uplift_Cap_Pct__c`, `Uplift_Cap_Basis__c`, `Uplift_Cap_Cycles__c`, `Uplift_Cap_On_Usage__c`, `Opt_Out__c`, `Opt_Out_Notice_Days__c`, `Credit_Rollover_Pct__c`, `Liability_Cap_Months__c`, `Governing_Law__c`, plus `Required_Approvers__c` and `Amended_Contract__c` (lookup to Contract; also on Opportunity), standing in for the CPQ amendment / renewal lookup
-- [ ] Validation rules for the blocking Q-rules Salesforce can see on the quote (Q-01 dates, Q-08 academic eligibility) and the "not allowed" terms (N-07 other opt-out shapes, N-08 rollover > 25%, N-10 non-EUR). Q-10 (one platform SKU, or for expansions and renewals an active `Amended_Contract__c` on the same account) is checked by the Quote Flow in C, which reads the segment from that contract, never from an account-wide query. Product-setup checks (Q-02 to Q-05, Q-09) stay in CPQ and are not rebuilt here (DEC-16)
-- [ ] QuoteLineItem fields `Discount_Approved_By__c` and `CPQ_Approval_Ref__c`, so the discount's origin is visible on the quote
-- [ ] Approval Process on Quote for non-standard terms and deal size: Deal Desk, Finance, CFO, CRO and Legal steps, each entered only when `Required_Approvers__c` names it
-- [ ] A-05: a change to price, quantity, term or dates on an approved quote resets its approval status
-- [ ] Manual test script `docs/sf_test_script.md`: one quote per N-rule plus the DD-002 worked example (expected: Deal Desk, CRO, CFO)
+- [ ] QuoteLineItem fields: `Contract_Year__c`, `Applicable_List__c`, `Rule_Family__c`, `Discount_Approved_By__c`, `CPQ_Approval_Ref__c` (discount fields stay as data; price approval is upstream in CPQ)
+- [ ] Quote fields for the N-rule terms: `Payment_Terms_Days__c`, `Billing_Frequency__c`, `Auto_Renewal__c`, `Non_Renewal_Notice_Days__c`, `Uplift_Cap_Pct__c`, `Uplift_Cap_Basis__c`, `Uplift_Cap_Cycles__c`, `Uplift_Cap_On_Usage__c`, `Opt_Out__c`, `Opt_Out_Notice_Days__c`, `Credit_Rollover_Pct__c`, `Liability_Cap_Months__c`, `Governing_Law__c`, plus `Required_Approvers__c` (multi-select: Deal Desk, Finance, CFO, CRO, Legal) and `Amended_Contract__c` (lookup to Contract; also on Opportunity), standing in for the CPQ amendment / renewal lookup
+- [ ] Validation rules for the blocking Q-rules Salesforce can see on the quote (Q-01 dates, Q-08 academic eligibility) and the "not allowed" terms (N-07 other opt-out shapes, N-08 rollover > 25%, N-10 non-EUR). Q-10 is checked by the Quote Flow in C, reading the segment from `Amended_Contract__c`, never from an account-wide query. Product-setup checks (Q-02 to Q-05, Q-09) stay in CPQ (DEC-16)
+- [ ] Custom object `Quote_Approval__c` (master-detail to Quote): `Role__c`, `Status__c` (Pending, Approved, Rejected, Superseded), `Rules__c` (the rules and reasons that put the role there), `Approver__c`, `Decided_At__c`, `Business_Days__c`
+- [ ] One queue per role, and a one-step Approval Process on `Quote_Approval__c` per role assigned to that queue; owner of the quote can't approve (A-06)
+- [ ] A-05: a change to price, quantity, term or dates on an approved quote supersedes its approvals and creates new ones
+- [ ] Manual test script `docs/sf_test_script.md`: one quote per N-rule, plus DD-002 worked example 1 (expected: Deal Desk, CRO, CFO in parallel)
 
 **C. Record-triggered Flows**
-- [ ] Quote / QuoteLineItem Flow: sets `Applicable_List__c`, then sets `Required_Approvers__c` from the N-rule terms and the A-02/A-03 TCV thresholds
-- [ ] Thresholds stored in Custom Metadata (`Deal_Desk_Rule__mdt`) loaded from the rules JSON, not typed into the Flow
-- [ ] Opportunity Flow: Stage becomes Closed Won → Booking_Status__c = Checking and a Contract_Check__c placeholder is created
-- [ ] Contract_Check__c Flow: on import, mark the newest check as latest, untick older ones, set Booking_Status__c (PASS → Ready to Book, REVIEW → Review, BLOCK → Blocked)
-- [ ] Parity test: for every DD-003 quote, the Flow's `Required_Approvers__c` equals the DD-004 output
+- [ ] Quote / QuoteLineItem Flow: sets `Applicable_List__c`, sets `Required_Approvers__c` from the N-rule terms and the A-02/A-03 TCV thresholds, then creates one `Quote_Approval__c` per role
+- [ ] Quote_Approval__c Flow: all approved → Quote Status Approved; any rejected → Rejected
+- [ ] Thresholds stored in Custom Metadata (`Deal_Desk_Rule__mdt`) generated from the rules JSON by `tools/sf/rules_to_cmdt.py`, not typed into the Flow
+- [ ] Opportunity Flow: Stage becomes Closed Won → `Booking_Status__c = Checking` (no placeholder check)
+- [ ] Contract_Check__c Flow: on import, mark the newest check as latest, untick older ones, copy outcome and clearance to the Opportunity, set Booking_Status__c (PASS → Ready to Book, REVIEW → Review, BLOCK → Blocked)
+- [ ] Parity test: for every DD-003 quote, the Flow's `Required_Approvers__c` equals the DD-004 output (`tools/sf/parity_check.py`)
 
 **Shared**
 - [ ] Metadata retrieved into `salesforce/` with the Salesforce CLI, plus a README of Setup steps for anything not retrieved
 - [ ] Test data loaded from DD-003 only (small volume)
+
+**Est. days:** 3.5 (A 1, B 1.5 including the parallel approvals, C 1).
+**Proves:** "Salesforce admin changes: fields, page layouts, validation rules, flows"; "price books and SKUs"; "keep approvals moving"; "check every closed-won deal against the signed contract before it's booked".
 
 ## DD-013 — Portfolio (slim)
 **Purpose:** make the work readable in five minutes by a RevOps hiring manager.
