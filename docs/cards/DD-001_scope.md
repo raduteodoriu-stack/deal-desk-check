@@ -16,7 +16,7 @@ The deal desk fixes these with one written policy, an approval path the system w
 | # | Deliverable | Where | What it contains |
 |---|---|---|---|
 | 1 | Scope statement | This card: In scope / Out of scope | The MVP boundary and the deferred list, so every later card can be checked against it |
-| 2 | Decision log | This card: Decisions | DEC-01 to DEC-22 with the option chosen and why. New decisions get the next DEC number here |
+| 2 | Decision log | This card: Decisions | DEC-01 to DEC-23 with the option chosen and why. New decisions get the next DEC number here |
 | 3 | Stakeholder map and RACI | This card: Stakeholders, RACI | Who needs what, and who is Responsible / Accountable / Consulted / Informed at each step |
 | 4 | To-be process map | This card: Process map | The quote-to-booking flow the MVP implements, with the system steps and the human steps |
 | 5 | Glossary | This card: Glossary | Each term links to its definition in DD-002, so there is one definition per term |
@@ -52,23 +52,26 @@ R = does the work · A = owns the outcome (one per row) · C = consulted · I = 
 ## Process map (to-be, MVP)
 ```mermaid
 flowchart TD
-  A[AE builds quote in Salesforce] --> B[Flow: Required_Approvers__c from<br/>non-standard terms and TCV<br/>price already approved in CPQ]
+  A[AE builds quote in Salesforce] --> B[Quote Flow: Required_Approvers__c from<br/>non-standard terms and TCV thresholds<br/>read from Deal_Desk_Rule__mdt<br/>price already approved in CPQ]
   B --> C{Approval needed?}
   C -- no --> E[Quote sent to customer]
-  C -- yes --> D[Approval Process:<br/>Deal Desk / Finance / CFO / CRO / Legal<br/>as required]
-  D -- approved --> E
-  D -- rejected --> A
+  C -- yes --> D[One Quote_Approval__c per required role<br/>Deal Desk / Finance / CFO / CRO / Legal<br/>all approve in parallel]
+  D -- all approved --> E
+  D -- any rejected --> A
   E --> F[Contract signed by both parties]
   F --> G[AE sets Closed Won<br/>close date = last signature date]
-  G --> H[Flow: Booking_Status__c = Checking,<br/>Contract_Check__c placeholder]
+  G --> H[Opportunity Flow: Booking_Status__c = Checking<br/>no check record yet]
   H --> I[Checker offline: pre-check → LLM on changed clauses → comparator]
-  I --> J[CSV import of result and findings]
-  J --> K{Outcome}
+  I --> J[Salesforce CLI bulk upsert:<br/>Contract_Check__c + findings, keyed by run]
+  J --> K{Outcome of latest check}
   K -- PASS --> L[Ready to Book]
-  K -- REVIEW / BLOCK --> M[Deal Desk reviews findings]
-  M -- clear with reason code --> L
+  K -- REVIEW --> R[Booking Status = Review]
+  K -- BLOCK --> Q[Booking Status = Blocked]
+  R --> M[Deal Desk reviews findings]
+  Q --> M
+  M -- clear with reason code<br/>Clear_Contract_Check permission --> L
   M -- send back --> N[AE fixes contract or Opportunity] --> I
-  L --> O[Finance sets Booked<br/>validation rule checks the gate]
+  L --> O[Finance sets Booked, Book_Deal permission<br/>validation rule checks PASS or cleared]
 ```
 As-is (for the before/after in DD-013): approvals by email or Slack with no written bands, contracts compared by eye or not at all, mismatches found at month-end close or renewal.
 
@@ -128,6 +131,7 @@ As-is (for the before/after in DD-013): approvals by email or Slack with no writ
 | DEC-20 | DD-014 pre-check model | Per decision: A / B / C (see DD-014) | **A for all five:** template patterns with typed slot captures (fingerprint kept as evidence); word-level diff; only changed, unrecognised or unreadable clauses go to the LLM; deterministic injection screen before any LLM call (C-21); strict slot parser, unreadable values go to the LLM |
 | DEC-21 | DD-007 LLM extraction model | Per decision: A / B / C (see DD-007) | **A for all six:** provider JSON mode + local schema check + up to 2 repairs; one call per changed clause; verbatim snippet check (unverified → C-19); known names, VAT IDs and emails redacted before sending; small Claude model as the one comparison (synthetic data only, 3 runs); recorded fixtures for tests, live calls only with `--live`. Spend guard at €4 under the €5 cap |
 | DEC-22 | DD-008 comparator and decision | Per decision: A / B / C (see DD-008) | **A for all seven:** expected = approved quote terms where an approval is recorded, else standard; one finding per rule per item with expected, found, page and snippet; every failing rule reported, known knock-ons tagged `follows_from`; empty field → `not_evaluable` + C-19 REVIEW, but an absent clause in a complete contract is judged; C-02 normalise + similarity (≥ 0.90 REVIEW, below BLOCK), C-03 exact after normalising; C-22 on calendar quarters (stated assumption, no rules change); two CSVs for DD-005 linked by `Check_Key__c` / `Finding_Key__c` (External IDs added to DD-005 A) | Approved exceptions pass and unapproved ones block; Finance sees exactly which line is wrong; nothing guessed or hidden; re-imports don't duplicate |
+| DEC-23 | DD-005 Salesforce thin slice | Per decision: A / B / C (see DD-005) | **B for decision 1, A for decisions 2 to 6:** parallel approvals, one `Quote_Approval__c` per required role, each with a one-step Approval Process on that role's queue, quote Approved only when all are approved and Rejected if any is; DD-008 results loaded by Salesforce CLI bulk upsert on `Check_Key__c` / `Finding_Key__c`, with `Deal_Id__c` (External ID) on Opportunity; Closed Won only sets Booking Status = Checking, the import creates the check record (no placeholder); Deal Desk alone clears REVIEW / BLOCK through the `Clear_Contract_Check` custom permission with a reason code, never the Opportunity owner, and Finance books with `Book_Deal`; thresholds generated from the rules JSON into `Deal_Desk_Rule__mdt`; scripted parity test of Flow approvers against DD-004 | Approvals run in parallel as the rules require, so a quote waits for the slowest approver, not the sum (DL-01: 2 business days, not 5); re-imports never duplicate; the JSON stays the only rules source; two people (Deal Desk, then Finance) see every cleared BLOCK before it is booked. About half a day more build (DD-005 3.5 days) |
 
 ## Glossary
 One definition per term, kept in DD-002. This list only points to it.
@@ -179,7 +183,7 @@ Measured on the synthetic test set. These are not claims about real impact.
 
 ## Acceptance criteria
 - [x] Scope, out of scope and stakeholders agreed
-- [x] DEC-01 to DEC-22 decided and recorded here
+- [x] DEC-01 to DEC-23 decided and recorded here
 - [x] RACI reviewed and agreed by the owner (Finance books and owns the booking; Deal Desk clears)
 - [ ] To-be process map reviewed; it matches the DD-005 Flows and the DD-008 outcomes
 - [x] Glossary terms link to DD-002, with no second definition anywhere else
