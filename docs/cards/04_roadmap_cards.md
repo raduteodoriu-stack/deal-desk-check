@@ -593,7 +593,7 @@ DD-008 then sees `credits` in `applies_to` and raises C-14 BLOCK. The numbers in
 
 **Inputs:** `contract_extraction/v1.2` (pre-check values, with LLM values filling only the gaps), `precheck_report.json` (flags: missing pages, missing clauses, injection), `quote.json` with its approvals, `opportunity.json` and `account.json` (DD-003), and DD-004's recomputed ARR / ACV / TCV. Every threshold comes from `contract_checks` in `rules/deal_desk_rules_v1.4.json`; nothing is typed into code.
 
-**Decisions** (each with options, trade-offs and a recommendation)
+**Decisions** (owner approved option A for all seven, DEC-22)
 
 **1. What "expected" means for terms that can be approved (C-11 to C-16, C-23)**
 | Option | How it works | Trade-offs |
@@ -666,7 +666,7 @@ contract_check_findings.csv
 Finding_Key__c,Check_Key__c,Rule__c,Severity__c,Expected__c,Found__c,Evidence__c
 DL-08-R001-C-11-payment_terms_days,DL-08-R001,C-11,BLOCK,30,60,"p2: Payment is due within 60 days of the invoice date."
 ```
-*Change to DD-005 A if approved:* add `Check_Key__c` (External ID, unique) on Contract_Check__c and `Finding_Key__c` (External ID, unique) on Contract_Check_Finding__c. `Is_Latest__c` stays with the DD-005 Flow.
+*Change to DD-005 A (applied):* add `Check_Key__c` (External ID, unique) on Contract_Check__c and `Finding_Key__c` (External ID, unique) on Contract_Check_Finding__c. `Is_Latest__c` stays with the DD-005 Flow.
 
 **Also fixed (no options needed)**
 | Topic | Decided |
@@ -743,8 +743,8 @@ The `<…>` values come from the DD-003 hand workings; they aren't invented here
 
 **A. Booking gate**
 - [ ] Opportunity fields: `Booking_Status__c` (Not Ready, Checking, Review, Blocked, Ready to Book, Booked), `Booked_ARR__c`, `ACV__c`, `TCV__c`, `Concession_Value__c`, `Term_Months__c`, `Booking_Date__c`
-- [ ] Custom object `Contract_Check__c` (lookup to Opportunity): `Outcome__c` (PASS / REVIEW / BLOCK), `Failed_Rules__c`, `Rules_Version__c`, `Run_At__c`, `Is_Latest__c`, `Cleared_By__c` (User), `Cleared_At__c`, `Clear_Reason_Code__c` (the 5 DD-002 override codes), `Clear_Reason__c`
-- [ ] Child object `Contract_Check_Finding__c` (master-detail): `Rule__c`, `Severity__c`, `Expected__c`, `Found__c`, `Evidence__c`
+- [ ] Custom object `Contract_Check__c` (lookup to Opportunity): `Check_Key__c` (External ID, unique; deal ID + run ID, DD-008), `Outcome__c` (PASS / REVIEW / BLOCK), `Failed_Rules__c`, `Rules_Version__c`, `Run_At__c`, `Is_Latest__c`, `Cleared_By__c` (User), `Cleared_At__c`, `Clear_Reason_Code__c` (the 5 DD-002 override codes), `Clear_Reason__c`
+- [ ] Child object `Contract_Check_Finding__c` (master-detail): `Finding_Key__c` (External ID, unique; check key + rule + item, DD-008), `Rule__c`, `Severity__c`, `Expected__c`, `Found__c`, `Evidence__c`
 - [ ] Opportunity fields for the latest check (`Latest_Check_Outcome__c`, `Latest_Check_Cleared__c`), set by the Flow in C
 - [ ] Validation rule on Contract_Check__c: a clearance needs Cleared_By, Cleared_At and Reason Code; code `other` needs Clear_Reason__c text
 - [ ] Validation rule on Opportunity: Booking_Status__c can't be Booked unless the latest check is PASS or was cleared with a logged reason
